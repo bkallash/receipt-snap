@@ -15,7 +15,7 @@ use Laravel\Ai\Promptable;
 
 #[Provider(Lab::Gemini)]
 #[Temperature(0.1)]
-#[Timeout(30)]
+#[Timeout(60)]
 class ReceiptParserAgent implements Agent, HasStructuredOutput
 {
     use Promptable;
@@ -29,16 +29,28 @@ class ReceiptParserAgent implements Agent, HasStructuredOutput
 
     public function model(): ?string
     {
-        return config('receipt-snap.ai.model');
+        return config('receipt-snap.ai.model') ?: env('RECEIPT_AI_MODEL', 'gemini-3.5-flash-lite');
     }
 
     public function instructions(): string
     {
         return <<<'PROMPT'
-        You are a receipt data extraction specialist. Analyze the provided receipt
-        image and extract all structured data. Be precise with amounts — use the
-        exact numbers shown on the receipt. If a field is not visible or unclear,
-        return null for that field. Extract every visible line item.
+        You are an expert receipt OCR data extraction specialist.
+        Thoroughly examine the receipt image from top to bottom and extract ALL structured fields:
+        - merchant_name: name of the seller or store
+        - receipt_date: transaction date in YYYY-MM-DD format
+        - subtotal, tax, tip, total: exact numerical amounts
+        - currency: 3-letter ISO code (e.g. USD, EUR)
+        - card_last_four, card_brand: payment card info if visible
+
+        LINE ITEMS EXTRACTION INSTRUCTIONS:
+        Scan the entire itemized body of the receipt line by line. Extract EVERY single purchased item, product, fee, or service listed before subtotal/tax.
+        Do NOT stop after the first 1 or 2 items — include ALL items on the receipt!
+        For each line item:
+        - description: exact product or item description text
+        - quantity: number of units (default to 1 if not explicitly listed)
+        - unit_price: price per unit (if not listed separately, set equal to total_price)
+        - total_price: final extended line item price shown on receipt
         PROMPT;
     }
 
@@ -58,9 +70,9 @@ class ReceiptParserAgent implements Agent, HasStructuredOutput
             'line_items' => $schema->array()->items(
                 $schema->object(fn ($s) => [
                     'description' => $s->string()->required(),
-                    'quantity' => $s->number()->required(),
-                    'unit_price' => $s->number()->required(),
-                    'total_price' => $s->number()->required(),
+                    'quantity' => $s->number()->nullable(),
+                    'unit_price' => $s->number()->nullable(),
+                    'total_price' => $s->number()->nullable(),
                 ])
             )->nullable(),
         ];

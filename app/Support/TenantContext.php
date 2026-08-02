@@ -15,7 +15,23 @@ final class TenantContext
 
     public static function get(): ?int
     {
-        return self::$organizationId;
+        if (self::$organizationId !== null) {
+            return self::$organizationId;
+        }
+
+        if ($user = auth()->user()) {
+            $orgId = session('current_organization_id')
+                ?? $user->organizations()->wherePivot('is_active', true)->first()?->id
+                ?? $user->organizations()->first()?->id;
+
+            if ($orgId) {
+                self::$organizationId = (int) $orgId;
+
+                return self::$organizationId;
+            }
+        }
+
+        return null;
     }
 
     public static function clear(): void

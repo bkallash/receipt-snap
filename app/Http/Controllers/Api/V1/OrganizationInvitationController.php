@@ -62,6 +62,17 @@ final class OrganizationInvitationController extends Controller
         return response()->json(['message' => 'Invitation accepted successfully.']);
     }
 
+    public function reject(Request $request, string $token): JsonResponse
+    {
+        $invitation = OrganizationInvitation::where('token', $token)->firstOrFail();
+
+        $this->authorize('reject', $invitation);
+
+        $this->invitationService->rejectInvitation($invitation, $request->user());
+
+        return response()->json(['message' => 'Invitation rejected successfully.']);
+    }
+
     public function destroy(Request $request, Organization $organization, OrganizationInvitation $invitation): JsonResponse
     {
         $this->authorize('revoke', $invitation);

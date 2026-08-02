@@ -12,6 +12,8 @@ use App\Models\Expense;
 use App\Models\Receipt;
 use App\Services\AiQuotaService;
 use App\Services\CircuitBreakerService;
+use App\Services\PolicyEnforcementService;
+use App\Support\TenantContext;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -28,13 +30,26 @@ final class ProcessReceiptScan implements ShouldBeUnique, ShouldQueue
 
     public int $tries = 3;
 
+    public int $timeout = 45;
+
     /** @var array<int, int> */
     public array $backoff = [10, 20, 40];
 
     public function __construct(
         public readonly int $expenseId,
+        ?int $organizationId = null,
     ) {
-        $this->captureTenantContext();
+        $orgId = $organizationId ?? TenantContext::get();
+        if (! $orgId) {
+            $expense = Expense::find($this->expenseId);
+            $orgId = $expense?->organization_id;
+        }
+
+        if ($orgId) {
+            $this->organizationId = (int) $orgId;
+        } else {
+            $this->captureTenantContext();
+        }
     }
 
     public function uniqueId(): string
@@ -46,6 +61,8 @@ final class ProcessReceiptScan implements ShouldBeUnique, ShouldQueue
         CircuitBreakerService $circuitBreaker,
         AiQuotaService $aiQuotaService,
     ): void {
+        @set_time_limit(0);
+
         $this->bindTenantContext();
 
         $expense = Expense::with('receiptImages')->find($this->expenseId);
@@ -86,7 +103,7 @@ final class ProcessReceiptScan implements ShouldBeUnique, ShouldQueue
         try {
             $providerName = (string) config('receipt-snap.ai.provider', 'gemini');
             $provider = Lab::tryFrom($providerName) ?? Lab::Gemini;
-            $model = config('receipt-snap.ai.model');
+            $model = config('receipt-snap.ai.model') ?: env('RECEIPT_AI_MODEL', 'gemini-3.5-flash-lite');
 
             // Prompt agent via laravel/ai SDK
             $imageAttachment = Image::fromStorage($primaryImage->file_path, disk: $primaryImage->disk ?: 'local');
@@ -123,54 +140,71 @@ final class ProcessReceiptScan implements ShouldBeUnique, ShouldQueue
             if (! empty($lineItems) && is_array($lineItems)) {
                 $expense->lineItems()->delete();
                 foreach ($lineItems as $sort => $item) {
-                    $qty = (float) ($item['quantity'] ?? 1);
-                    $unitPrice = (float) ($item['unit_price'] ?? 0);
+                    if (empty($item['description'])) {
+                        continue;
+                    }
+                    $qty = isset($item['quantity']) && (float) $item['quantity'] > 0 ? (float) $item['quantity'] : 1.0;
+                    $unitPrice = isset($item['unit_price']) ? (float) $item['unit_price'] : 0.0;
+                    $totalPrice = isset($item['total_price']) ? (float) $item['total_price'] : 0.0;
+
+                    if ($unitPrice <= 0.0 && $totalPrice > 0.0) {
+                        $unitPrice = round($totalPrice / $qty, 2);
+                    } elseif ($totalPrice <= 0.0 && $unitPrice > 0.0) {
+                        $totalPrice = round($qty * $unitPrice, 2);
+                    }
+
                     $expense->lineItems()->create([
-                        'description' => (string) ($item['description'] ?? 'Item'),
+                        'description' => (string) $item['description'],
                         'quantity' => $qty,
                         'unit_price' => $unitPrice,
-                        'total_price' => (float) ($item['total_price'] ?? ($qty * $unitPrice)),
+                        'total_price' => $totalPrice,
                         'sort_order' => $sort,
                     ]);
                 }
             }
 
-            // Auto-populate expense fields if confidence is high (>= threshold)
-            $threshold = (float) config('receipt-snap.ai.confidence_threshold', 70.0);
-            if ($confidence >= $threshold) {
-                $updates = [];
-                $merchant = $response['merchant_name'] ?? $data['merchant_name'] ?? null;
-                $total = $response['total'] ?? $data['total'] ?? null;
-                $tax = $response['tax'] ?? $data['tax'] ?? null;
-                $tip = $response['tip'] ?? $data['tip'] ?? null;
-                $currency = $response['currency'] ?? $data['currency'] ?? config('receipt-snap.default_currency', 'USD');
-                $receiptDate = $response['receipt_date'] ?? $data['receipt_date'] ?? null;
+            // Auto-populate expense fields with extracted data
+            $updates = [];
+            $merchant = $response['merchant_name'] ?? $data['merchant_name'] ?? null;
+            $total = $response['total'] ?? $data['total'] ?? null;
+            $tax = $response['tax'] ?? $data['tax'] ?? null;
+            $tip = $response['tip'] ?? $data['tip'] ?? null;
+            $currency = $response['currency'] ?? $data['currency'] ?? config('receipt-snap.default_currency', 'USD');
+            $receiptDate = $response['receipt_date'] ?? $data['receipt_date'] ?? null;
 
-                if (! empty($merchant)) {
-                    $updates['merchant_name'] = $merchant;
-                }
-                if (! empty($total)) {
-                    $updates['amount'] = (float) $total;
-                }
-                if (! empty($tax)) {
-                    $updates['tax_amount'] = (float) $tax;
-                }
-                if (! empty($tip)) {
-                    $updates['tip_amount'] = (float) $tip;
-                }
-                if (! empty($currency)) {
-                    $updates['currency_code'] = strtoupper((string) $currency);
-                }
-                if (! empty($receiptDate)) {
-                    $updates['expense_date'] = $receiptDate;
-                }
+            if (! empty($merchant)) {
+                $updates['merchant_name'] = (string) $merchant;
+            }
+            if ($total !== null && (float) $total > 0) {
+                $updates['amount'] = (float) $total;
+            }
+            if ($tax !== null) {
+                $updates['tax_amount'] = (float) $tax;
+            }
+            if ($tip !== null) {
+                $updates['tip_amount'] = (float) $tip;
+            }
+            if (! empty($currency)) {
+                $updates['currency_code'] = strtoupper((string) $currency);
+            }
+            if (! empty($receiptDate)) {
+                $updates['expense_date'] = $receiptDate;
+            }
 
-                if ($expense->status === ExpenseStatus::PendingScan || $expense->status === ExpenseStatus::Draft) {
-                    $updates['status'] = ExpenseStatus::Draft;
-                }
+            if ($expense->status === ExpenseStatus::PendingScan || $expense->status === ExpenseStatus::Draft) {
+                $updates['status'] = ExpenseStatus::Draft;
+            }
 
+            if (! empty($updates)) {
                 $expense->update($updates);
             }
+
+            // Re-evaluate policy flags after updating details
+            $policyEnforcement = app(PolicyEnforcementService::class);
+            $flags = $policyEnforcement->evaluate($expense->fresh());
+            $meta = $expense->metadata ?? [];
+            $meta['policy_flags'] = $flags;
+            $expense->update(['metadata' => $meta]);
 
             // Record success and increment quota
             $circuitBreaker->recordSuccess();
@@ -179,9 +213,15 @@ final class ProcessReceiptScan implements ShouldBeUnique, ShouldQueue
         } catch (\Throwable $e) {
             $circuitBreaker->recordFailure();
 
-            $receipt->update([
-                'processing_status' => ReceiptProcessingStatus::Failed,
-            ]);
+            if (isset($receipt)) {
+                $receipt->update([
+                    'processing_status' => ReceiptProcessingStatus::Failed,
+                ]);
+            }
+
+            if ($expense->status === ExpenseStatus::PendingScan) {
+                $expense->update(['status' => ExpenseStatus::Draft]);
+            }
 
             Log::error('ProcessReceiptScan failed.', [
                 'expense_id' => $this->expenseId,
@@ -189,6 +229,14 @@ final class ProcessReceiptScan implements ShouldBeUnique, ShouldQueue
             ]);
 
             throw $e;
+        }
+    }
+
+    public function failed(\Throwable $exception): void
+    {
+        $expense = Expense::find($this->expenseId);
+        if ($expense && $expense->status === ExpenseStatus::PendingScan) {
+            $expense->update(['status' => ExpenseStatus::Draft]);
         }
     }
 }

@@ -32,7 +32,7 @@ final class ReceiptImage extends Model
     protected function url(): Attribute
     {
         return Attribute::make(
-            get: fn (): string => Storage::disk($this->disk ?: 'local')->url($this->file_path),
+            get: fn (): string => route('portal.receipt-image', ['receiptImage' => $this->id]),
         );
     }
 

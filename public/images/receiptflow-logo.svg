@@ -1,0 +1,14 @@
+<svg width="180" height="40" viewBox="0 0 180 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- ReceiptSnap Mark -->
+  <g transform="translate(0, 0)">
+    <path d="M6 24C6 12.9543 14.9543 4 26 4H30V16C30 27.0457 21.0457 36 10 36H6V24Z" fill="#10B981"/>
+    <path d="M12 13H22" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M10 19H20" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
+    <path d="M8 25H16" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round"/>
+  </g>
+  <!-- ReceiptSnap Text -->
+  <text x="38" y="27" font-family="Inter, system-ui, -apple-system, sans-serif" font-size="20" font-weight="700" letter-spacing="-0.03em">
+    <tspan fill="#FFFFFF">Receipt</tspan>
+    <tspan fill="#10B981">Snap</tspan>
+  </text>
+</svg>

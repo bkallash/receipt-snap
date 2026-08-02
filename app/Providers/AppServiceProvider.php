@@ -6,8 +6,10 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Livewire\Livewire;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -24,11 +26,25 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if ($this->app->runningInConsole()) {
+            @set_time_limit(0);
+            @ini_set('max_execution_time', '0');
+        }
+
         if ($this->app->environment('local')) {
             Http::globalOptions([
                 'verify' => false,
             ]);
         }
+
+        View::addNamespace('pages', resource_path('views/pages'));
+        Livewire::addNamespace(
+            'pages',
+            resource_path('views/pages'),
+            'App\\Livewire\\Pages',
+            app_path('Livewire/Pages'),
+            resource_path('views/livewire/pages')
+        );
 
         $this->configureDefaults();
     }

@@ -43,4 +43,11 @@ final class OrganizationInvitationPolicy
             && $invitation->status === InvitationStatus::Pending
             && $invitation->expires_at->isFuture();
     }
+
+    public function reject(User $user, OrganizationInvitation $invitation): bool
+    {
+        return strtolower($user->email) === strtolower($invitation->email)
+            && $invitation->status === InvitationStatus::Pending
+            && $invitation->expires_at->isFuture();
+    }
 }

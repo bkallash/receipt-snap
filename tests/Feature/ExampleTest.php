@@ -10,11 +10,11 @@ class ExampleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_home_redirects_to_portal(): void
+    public function test_home_redirects_to_login_for_guests(): void
     {
         $response = $this->get(route('home'));
 
-        $response->assertRedirect(route('portal.expenses'));
+        $response->assertRedirect(route('login'));
     }
 
     public function test_authenticated_user_can_access_portal(): void

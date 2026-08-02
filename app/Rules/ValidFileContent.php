@@ -14,7 +14,7 @@ final class ValidFileContent implements ValidationRule
      * @param  array<string>  $allowedTypes  e.g. ['jpeg', 'png', 'pdf', 'heic']
      */
     public function __construct(
-        private readonly array $allowedTypes = ['jpeg', 'png', 'pdf', 'heic'],
+        private readonly array $allowedTypes = ['jpeg', 'png', 'webp', 'pdf', 'heic'],
     ) {}
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
@@ -49,7 +49,7 @@ final class ValidFileContent implements ValidationRule
         }
 
         if (! $this->isValidHeader($bytes)) {
-            $fail("The file content of {$attribute} does not match allowed format (JPEG, PNG, PDF, HEIC).");
+            $fail("The file content of {$attribute} does not match allowed format (JPEG, PNG, WebP, PDF, HEIC).");
         }
     }
 
@@ -63,6 +63,13 @@ final class ValidFileContent implements ValidationRule
         // PNG magic bytes: \x89PNG\r\n\x1a\n
         if (in_array('png', $this->allowedTypes, true) && str_starts_with($bytes, "\x89PNG\r\n\x1a\n")) {
             return true;
+        }
+
+        // WebP magic bytes: RIFF....WEBP
+        if (in_array('webp', $this->allowedTypes, true) && strlen($bytes) >= 12) {
+            if (str_starts_with($bytes, 'RIFF') && substr($bytes, 8, 4) === 'WEBP') {
+                return true;
+            }
         }
 
         // PDF magic bytes: %PDF-

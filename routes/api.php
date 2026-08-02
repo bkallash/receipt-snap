@@ -22,8 +22,9 @@ Route::prefix('v1')->group(function (): void {
         Route::post('auth/login', [AuthController::class, 'login']);
     });
 
-    // Invitation acceptance is token-authenticated
+    // Invitation acceptance & rejection are token-authenticated
     Route::post('invitations/{token}/accept', [OrganizationInvitationController::class, 'accept'])->middleware('auth:sanctum');
+    Route::post('invitations/{token}/reject', [OrganizationInvitationController::class, 'reject'])->middleware('auth:sanctum');
 
     // Authenticated (Sanctum)
     Route::middleware('auth:sanctum')->group(function (): void {

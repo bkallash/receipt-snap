@@ -38,9 +38,9 @@ final class StoreExpenseRequest extends FormRequest
             'receipt_images' => ['nullable', 'array', 'max:10'],
             'receipt_images.*' => [
                 'file',
-                'mimes:jpg,jpeg,png,pdf,heic',
+                'mimes:jpg,jpeg,png,webp,pdf,heic',
                 'max:10240',
-                new ValidFileContent(['jpeg', 'png', 'pdf', 'heic']),
+                new ValidFileContent(['jpeg', 'png', 'webp', 'pdf', 'heic']),
             ],
         ];
     }

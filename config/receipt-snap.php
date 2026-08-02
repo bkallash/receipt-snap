@@ -12,7 +12,7 @@ return [
 
     'ai' => [
         'provider' => env('RECEIPT_AI_PROVIDER', 'gemini'),
-        'model' => env('RECEIPT_AI_MODEL'),
+        'model' => env('RECEIPT_AI_MODEL', 'gemini-3.5-flash-lite'),
         'confidence_threshold' => 70.0,
         'max_retries' => 3,
         'retry_backoff' => [10, 20, 40],

@@ -122,4 +122,9 @@ class User extends Authenticatable implements PasskeyUser
 
         return $role === UserRole::Manager || $role === UserRole::Admin || $role === UserRole::Owner;
     }
+
+    public function isEmployeeOf(Organization $organization): bool
+    {
+        return $this->roleIn($organization) === UserRole::Employee;
+    }
 }

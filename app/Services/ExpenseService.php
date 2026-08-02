@@ -104,6 +104,44 @@ final class ExpenseService
         }
     }
 
+    /**
+     * Update a draft expense and sync line items atomically.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function updateExpense(Expense $expense, array $data): Expense
+    {
+        DB::transaction(function () use ($expense, $data): void {
+            $expenseUpdates = array_diff_key($data, array_flip(['line_items', 'receipt_images']));
+            if (! empty($expenseUpdates)) {
+                $expense->update($expenseUpdates);
+            }
+
+            if (array_key_exists('line_items', $data) && is_array($data['line_items'])) {
+                $expense->lineItems()->delete();
+                foreach ($data['line_items'] as $sort => $item) {
+                    $qty = (float) ($item['quantity'] ?? 1);
+                    $unitPrice = (float) ($item['unit_price'] ?? 0);
+                    $expense->lineItems()->create([
+                        'description' => (string) $item['description'],
+                        'quantity' => $qty,
+                        'unit_price' => $unitPrice,
+                        'total_price' => (float) ($item['total_price'] ?? round($qty * $unitPrice, 2)),
+                        'sort_order' => $sort,
+                    ]);
+                }
+            }
+        });
+
+        // Re-evaluate policy flags after updating details
+        $flags = $this->policyEnforcementService->evaluate($expense);
+        $meta = $expense->metadata ?? [];
+        $meta['policy_flags'] = $flags;
+        $expense->update(['metadata' => $meta]);
+
+        return $expense->fresh();
+    }
+
     public function submitExpense(Expense $expense): Expense
     {
         if (! in_array($expense->status, [ExpenseStatus::Draft, ExpenseStatus::Rejected], true)) {

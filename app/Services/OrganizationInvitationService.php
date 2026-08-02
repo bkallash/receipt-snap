@@ -68,4 +68,17 @@ final class OrganizationInvitationService
     {
         $invitation->update(['status' => InvitationStatus::Revoked]);
     }
+
+    public function rejectInvitation(OrganizationInvitation $invitation, User $user): void
+    {
+        if ($invitation->status !== InvitationStatus::Pending || $invitation->expires_at->isPast()) {
+            throw new \RuntimeException('Invitation is no longer valid or expired.');
+        }
+
+        if (strtolower($user->email) !== strtolower($invitation->email)) {
+            throw new \RuntimeException('Logged in user email does not match invitation recipient.');
+        }
+
+        $invitation->update(['status' => InvitationStatus::Rejected]);
+    }
 }

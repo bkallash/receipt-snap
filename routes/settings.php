@@ -1,17 +1,18 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::middleware(['auth'])->group(function () {
     Route::redirect('settings', 'settings/profile');
 
-    Route::livewire('settings/profile', 'pages::settings.profile')->name('profile.edit');
+    Route::get('settings/profile', fn () => Inertia::render('Dashboard'))->name('profile.edit');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::livewire('settings/appearance', 'pages::settings.appearance')->name('appearance.edit');
+    Route::get('settings/appearance', fn () => Inertia::render('Dashboard'))->name('appearance.edit');
 
-    Route::livewire('settings/security', 'pages::settings.security')
+    Route::get('settings/security', fn () => Inertia::render('Dashboard'))
         ->middleware([
             'password.confirm',
         ])

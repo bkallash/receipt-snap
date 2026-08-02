@@ -22,19 +22,26 @@ final class SetOrganizationContext
         $organizationId = null;
 
         // 1. If authenticated via Sanctum API token, extract org:{id} ability
-        if ($user->currentAccessToken()) {
-            foreach ($user->currentAccessToken()->abilities as $ability) {
-                if (str_starts_with($ability, 'org:')) {
+        $token = $user->currentAccessToken();
+        if ($token && isset($token->abilities) && is_array($token->abilities)) {
+            foreach ($token->abilities as $ability) {
+                if (is_string($ability) && str_starts_with($ability, 'org:')) {
                     $organizationId = (int) substr($ability, 4);
                     break;
                 }
             }
         }
 
-        // 2. Fallback to session / default org for web or token without explicit ability
+        // 2. Check X-Organization-Id header if provided by frontend
+        if (! $organizationId && $request->hasHeader('X-Organization-Id')) {
+            $organizationId = (int) $request->header('X-Organization-Id');
+        }
+
+        // 3. Fallback to session / default org for web or token without explicit ability
         if (! $organizationId) {
             $organizationId = session('current_organization_id')
-                ?? $user->organizations()->wherePivot('is_active', true)->first()?->id;
+                ?? $user->organizations()->wherePivot('is_active', true)->first()?->id
+                ?? $user->organizations()->first()?->id;
         }
 
         if (! $organizationId) {

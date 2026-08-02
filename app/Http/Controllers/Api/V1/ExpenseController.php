@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\ExpenseStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\StoreExpenseRequest;
@@ -17,6 +18,7 @@ use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 final class ExpenseController extends Controller
@@ -64,10 +66,16 @@ final class ExpenseController extends Controller
         $expense = $this->expenseService->createExpense($request->user(), $request->validated(), $images);
 
         if (! empty($images)) {
-            ProcessReceiptScan::dispatch($expense->id);
+            $expense->update(['status' => ExpenseStatus::PendingScan]);
+            try {
+                ProcessReceiptScan::dispatch($expense->id);
+            } catch (\Throwable $e) {
+                Log::warning('Receipt scan dispatch error', ['error' => $e->getMessage()]);
+                $expense->update(['status' => ExpenseStatus::Draft]);
+            }
         }
 
-        return (new ExpenseResource($expense->load(['user', 'category', 'receiptImages', 'receipt', 'lineItems'])))
+        return (new ExpenseResource($expense->fresh(['user', 'category', 'receiptImages', 'receipt', 'lineItems'])))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
     }
@@ -81,7 +89,9 @@ final class ExpenseController extends Controller
 
     public function update(UpdateExpenseRequest $request, Expense $expense): ExpenseResource
     {
-        $expense->update($request->validated());
+        $this->authorize('update', $expense);
+
+        $expense = $this->expenseService->updateExpense($expense, $request->validated());
 
         return new ExpenseResource($expense->load(['user', 'category', 'receiptImages', 'receipt', 'lineItems']));
     }

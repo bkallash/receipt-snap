@@ -39,12 +39,16 @@ final class ExpensePolicy
             return false;
         }
 
-        return in_array($expense->status, [ExpenseStatus::Draft, ExpenseStatus::Rejected], true);
+        return in_array($expense->status, [ExpenseStatus::Draft, ExpenseStatus::PendingScan, ExpenseStatus::Rejected], true);
     }
 
     public function delete(User $user, Expense $expense): bool
     {
-        return $user->id === $expense->user_id && $expense->status === ExpenseStatus::Draft;
+        if ($user->id !== $expense->user_id) {
+            return false;
+        }
+
+        return in_array($expense->status, [ExpenseStatus::Draft, ExpenseStatus::PendingScan, ExpenseStatus::Rejected], true);
     }
 
     public function submit(User $user, Expense $expense): bool

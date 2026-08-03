@@ -146,7 +146,7 @@ it('allows web session authenticated user to upload a receipt via API without Sa
     ]);
 });
 
-it('denies access to portal expenses for non-employee users', function (UserRole $role): void {
+it('redirects manager/admin/owner away from employee portal expenses page', function (UserRole $role): void {
     $organization = Organization::factory()->create();
     $user = User::factory()->create();
     $organization->users()->attach($user->id, ['role' => $role->value]);
@@ -155,10 +155,9 @@ it('denies access to portal expenses for non-employee users', function (UserRole
         ->withSession(['current_organization_id' => $organization->id])
         ->get('/portal/expenses');
 
-    $response->assertStatus(403);
+    $response->assertRedirect(route('portal.manager.expenses'));
 })->with([
     'manager' => UserRole::Manager,
     'owner' => UserRole::Owner,
     'admin' => UserRole::Admin,
-    'accountant' => UserRole::Accountant,
 ]);

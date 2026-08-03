@@ -654,13 +654,13 @@ export default function ExpenseDraftEditorModal({
                 </div>
 
                 {/* Modal Footer Actions */}
-                <div className="flex items-center justify-between border-t border-zinc-800 bg-zinc-900/80 px-6 py-4">
+                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 border-t border-zinc-800 bg-zinc-900/80 px-4 py-3 sm:px-6 sm:py-4">
                     <div className="flex items-center gap-2">
                         <Button
                             type="button"
                             variant="outline"
                             onClick={onClose}
-                            className="border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200"
+                            className="border-zinc-800 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 text-xs h-9"
                         >
                             Cancel
                         </Button>
@@ -668,29 +668,29 @@ export default function ExpenseDraftEditorModal({
                             type="button"
                             onClick={handleDeleteDraft}
                             disabled={isSaving || isSubmitting || isDeleting}
-                            className="border-rose-900/30 bg-rose-900/10 text-rose-400 hover:bg-rose-900/20"
+                            className="border-rose-900/30 bg-rose-900/10 text-rose-400 hover:bg-rose-900/20 text-xs h-9"
                         >
                             {isDeleting ? (
-                                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                             ) : (
-                                <Trash2 className="mr-1.5 h-4 w-4" />
+                                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                             )}
                             Discard
                         </Button>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 sm:gap-3">
                         <Button
                             type="button"
                             variant="outline"
                             onClick={handleSaveDraft}
                             disabled={isSaving || isSubmitting || isDeleting}
-                            className="border-zinc-800 bg-zinc-900 text-zinc-200 hover:bg-zinc-800"
+                            className="border-zinc-800 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 text-xs h-9"
                         >
                             {isSaving ? (
-                                <Loader2 className="mr-1.5 h-4 w-4 animate-spin text-emerald-400" />
+                                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin text-emerald-400" />
                             ) : (
-                                <Save className="mr-1.5 h-4 w-4 text-emerald-400" />
+                                <Save className="mr-1.5 h-3.5 w-3.5 text-emerald-400" />
                             )}
                             Save Draft
                         </Button>
@@ -699,12 +699,12 @@ export default function ExpenseDraftEditorModal({
                             type="button"
                             onClick={handleSubmitToManager}
                             disabled={isSaving || isSubmitting || isDeleting}
-                            className="bg-emerald-500 font-semibold text-zinc-950 shadow-lg shadow-emerald-500/20 hover:bg-emerald-400 active:scale-[0.98]"
+                            className="bg-emerald-500 font-semibold text-zinc-950 shadow-lg shadow-emerald-500/20 hover:bg-emerald-400 active:scale-[0.98] text-xs h-9"
                         >
                             {isSubmitting ? (
-                                <Loader2 className="mr-1.5 h-4 w-4 animate-spin text-zinc-950" />
+                                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin text-zinc-950" />
                             ) : (
-                                <Send className="mr-1.5 h-4 w-4 text-zinc-950 stroke-[2.5]" />
+                                <Send className="mr-1.5 h-3.5 w-3.5 text-zinc-950 stroke-[2.5]" />
                             )}
                             Submit to Manager
                         </Button>

@@ -31,7 +31,15 @@ final class EmployeePortalController extends Controller
         $orgId = TenantContext::get();
         $activeOrg = $orgId ? Organization::where('id', $orgId)->first() : $user->currentOrganization();
 
-        if (! $activeOrg || ! $user->isEmployeeOf($activeOrg)) {
+        if (! $activeOrg) {
+            return redirect()->route('portal.invitations');
+        }
+
+        if ($user->isManagerOf($activeOrg)) {
+            return redirect()->route('portal.manager.expenses');
+        }
+
+        if (! $user->isEmployeeOf($activeOrg)) {
             abort(403, 'Access to this page is restricted to users with the Employee role.');
         }
 

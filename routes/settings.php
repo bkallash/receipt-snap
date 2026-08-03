@@ -4,9 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::middleware(['auth'])->group(function () {
-    Route::redirect('settings', 'settings/profile');
-
-    Route::get('settings/profile', fn () => Inertia::render('Dashboard'))->name('profile.edit');
+    Route::redirect('settings', 'settings/appearance');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

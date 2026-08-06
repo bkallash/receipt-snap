@@ -19,6 +19,7 @@ final class OrganizationInvitationService
         string $email,
         UserRole $role,
         ?int $departmentId = null,
+        ?int $expiresInDays = null,
     ): OrganizationInvitation {
         // Revoke any existing pending invitations for this email in this org
         OrganizationInvitation::query()
@@ -35,7 +36,7 @@ final class OrganizationInvitationService
             'department_id' => $departmentId,
             'token' => Str::random(40),
             'status' => InvitationStatus::Pending,
-            'expires_at' => now()->addDays(14),
+            'expires_at' => now()->addDays($expiresInDays ?? 14),
         ]);
     }
 

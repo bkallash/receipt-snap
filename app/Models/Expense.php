@@ -24,6 +24,7 @@ final class Expense extends Model
         'organization_id',
         'user_id',
         'expense_category_id',
+        'reimbursement_batch_id',
         'merchant_name',
         'description',
         'amount',
@@ -37,6 +38,11 @@ final class Expense extends Model
         'approved_at',
         'rejected_at',
         'reimbursed_at',
+        'payment_reference',
+        'transaction_hash',
+        'payment_voucher_path',
+        'tax_verified',
+        'merchant_vat_id',
         'rejection_reason',
         'metadata',
     ];
@@ -44,6 +50,7 @@ final class Expense extends Model
     protected $casts = [
         'status' => ExpenseStatus::class,
         'payment_method' => PaymentMethod::class,
+        'tax_verified' => 'boolean',
         'amount' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'tip_amount' => 'decimal:2',
@@ -68,6 +75,11 @@ final class Expense extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(ExpenseCategory::class, 'expense_category_id');
+    }
+
+    public function reimbursementBatch(): BelongsTo
+    {
+        return $this->belongsTo(ReimbursementBatch::class);
     }
 
     public function receipt(): HasOne

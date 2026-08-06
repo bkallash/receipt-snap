@@ -1,4 +1,4 @@
-# 🧾 ReceiptFlow — AI-Powered Employee Expense & Receipt Tracker
+# 🧾 ReceiptSnap — AI-Powered Employee Expense & Receipt Tracker
 
 ## The Problem
 Employees pay out-of-pocket for company expenses → submit paper/photo receipts → managers manually review → finance manually processes reimbursement. It's slow, error-prone, and frustrating for everyone.
@@ -11,7 +11,7 @@ A SaaS platform where employees snap a photo of a receipt, AI extracts all detai
 ## 🏗️ Core Architecture & Multi-Tenancy Strategy
 
 ### Multi-Tenant Model: Hybrid Scoping
-To balance operational cost with enterprise compliance requirements, ReceiptFlow employs a **Hybrid Multi-Tenancy Architecture**:
+To balance operational cost with enterprise compliance requirements, ReceiptSnap employs a **Hybrid Multi-Tenancy Architecture**:
 - **Standard (Free & Pro Tiers)**: Single database with row-level tenant isolation (`organization_id` column on all models). Enforced globally via Eloquent Global Scopes and tenant-aware middleware (`ScopeOrganization`).
 - **Enterprise Tier**: Dedicated Database per tenant (or schema-per-tenant on Postgres) using Laravel Tenancy (`stancl/tenancy`). Provides complete data isolation, custom encryption keys, and independent backup/restore cycles required for SOC 2 / HIPAA compliance.
 
@@ -64,7 +64,7 @@ To prevent duplicate processing, double reimbursement, or double-approval from r
 - **Enterprise Key Rotation**: Enterprise tenants can optionally bind AWS KMS or HashiCorp Vault per-tenant data encryption keys (DEKs).
 
 ### PCI & Financial Data Handling
-- ReceiptFlow **does not store full Credit Card Primary Account Numbers (PANs)**.
+- ReceiptSnap **does not store full Credit Card Primary Account Numbers (PANs)**.
 - AI parser extracts and stores only `card_last_four` and `card_brand` for transaction matching.
 - Bank payouts are executed strictly via tokenized bank accounts via Stripe Connect Financial Connections / Plaid.
 

@@ -7,6 +7,8 @@ import {
     LogOut,
     Plus,
     Receipt,
+    Settings2,
+    ShieldCheck,
     User as UserIcon,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -40,6 +42,30 @@ export default function PortalNavbar({
         userRole === 'owner' ||
         currentUrl.startsWith('/portal/manager');
 
+    const isAccountant =
+        userRole === 'accountant' ||
+        userRole === 'admin' ||
+        userRole === 'owner' ||
+        currentUrl.startsWith('/accountant');
+
+    const isOrgAdmin =
+        userRole === 'admin' ||
+        userRole === 'owner' ||
+        currentUrl.startsWith('/admin');
+
+    const logoHref = (() => {
+        if (currentUrl.startsWith('/admin') || userRole === 'admin' || userRole === 'owner') {
+            return '/admin/dashboard';
+        }
+        if (currentUrl.startsWith('/accountant') || userRole === 'accountant' || userRole === 'finance') {
+            return '/accountant/dashboard';
+        }
+        if (currentUrl.startsWith('/portal/manager') || userRole === 'manager') {
+            return '/portal/manager/expenses';
+        }
+        return '/dashboard';
+    })();
+
     const handleLogout = () => {
         router.post('/logout');
     };
@@ -49,7 +75,7 @@ export default function PortalNavbar({
             <div className="mx-auto flex max-w-7xl items-center justify-between px-3 py-2.5 sm:px-6 lg:px-8">
                 {/* Brand & Organization context */}
                 <div className="flex items-center gap-2 sm:gap-6 min-w-0">
-                    <Link href="/portal/expenses" className="flex items-center shrink-0">
+                    <Link href={logoHref} className="flex items-center shrink-0">
                         <Logo className="h-7 w-auto sm:h-8 text-emerald-400" />
                     </Link>
 
@@ -62,96 +88,80 @@ export default function PortalNavbar({
                         </div>
                     )}
 
-                    {/* Nav Links - Scrollable on small screens */}
+                    {/* Nav Links */}
                     <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 min-w-0">
-                        {isManagerOrAdmin ? (
-                            <>
-                                {onTabChange ? (
-                                    <button
-                                        onClick={() => onTabChange('team_approvals')}
-                                        className={`flex items-center gap-1.5 shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                                            (activeTab ? activeTab === 'team_approvals' : currentUrl.startsWith('/portal/manager'))
-                                                ? 'bg-zinc-800 text-emerald-400 border border-emerald-500/20 shadow-sm'
-                                                : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
-                                        }`}
-                                    >
-                                        <CheckSquare className="h-3.5 w-3.5 shrink-0" />
-                                        <span>Approvals</span>
-                                    </button>
-                                ) : (
-                                    <Link
-                                        href="/portal/manager/expenses"
-                                        className={`flex items-center gap-1.5 shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                                            currentUrl.startsWith('/portal/manager')
-                                                ? 'bg-zinc-800 text-emerald-400 border border-emerald-500/20 shadow-sm'
-                                                : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
-                                        }`}
-                                    >
-                                        <CheckSquare className="h-3.5 w-3.5 shrink-0" />
-                                        <span>Approvals</span>
-                                    </Link>
-                                )}
-
-                                {onTabChange ? (
-                                    <button
-                                        onClick={() => onTabChange('my_expenses')}
-                                        className={`flex items-center gap-1.5 shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                                            activeTab === 'my_expenses'
-                                                ? 'bg-zinc-800 text-emerald-400 border border-emerald-500/20 shadow-sm'
-                                                : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
-                                        }`}
-                                    >
-                                        <Receipt className="h-3.5 w-3.5 shrink-0" />
-                                        <span>My Expenses</span>
-                                    </button>
-                                ) : (
-                                    <Link
-                                        href="/portal/expenses"
-                                        className={`flex items-center gap-1.5 shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                                            currentUrl === '/portal/expenses'
-                                                ? 'bg-zinc-800 text-white'
-                                                : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
-                                        }`}
-                                    >
-                                        <Receipt className="h-3.5 w-3.5 shrink-0" />
-                                        <span>My Expenses</span>
-                                    </Link>
-                                )}
-                            </>
-                        ) : (
+                        {isOrgAdmin && (
                             <Link
-                                href="/portal/expenses"
+                                href="/admin/dashboard"
                                 className={`flex items-center gap-1.5 shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                                    currentUrl === '/portal/expenses'
-                                        ? 'bg-zinc-800 text-white'
+                                    currentUrl.startsWith('/admin')
+                                        ? 'bg-zinc-800 text-indigo-300 border border-indigo-500/20 shadow-sm'
                                         : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
                                 }`}
                             >
-                                <Receipt className="h-3.5 w-3.5 shrink-0" />
-                                <span>My Expenses</span>
+                                <Settings2 className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
+                                <span>Admin</span>
                             </Link>
                         )}
+
+                        {isAccountant && (
+                            <Link
+                                href="/accountant/dashboard"
+                                className={`flex items-center gap-1.5 shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                                    currentUrl.startsWith('/accountant')
+                                        ? 'bg-zinc-800 text-emerald-400 border border-emerald-500/20 shadow-sm'
+                                        : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                                }`}
+                            >
+                                <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                                <span>Finance Portal</span>
+                            </Link>
+                        )}
+
+                        {isManagerOrAdmin && (
+                            <Link
+                                href="/portal/manager/expenses"
+                                className={`flex items-center gap-1.5 shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                                    currentUrl.startsWith('/portal/manager')
+                                        ? 'bg-zinc-800 text-emerald-400 border border-emerald-500/20 shadow-sm'
+                                        : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                                }`}
+                            >
+                                <CheckSquare className="h-3.5 w-3.5 shrink-0" />
+                                <span>Approvals</span>
+                            </Link>
+                        )}
+
+                        <Link
+                            href="/portal/expenses"
+                            className={`flex items-center gap-1.5 shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                                currentUrl === '/portal/expenses'
+                                    ? 'bg-zinc-800 text-white'
+                                    : 'text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200'
+                            }`}
+                        >
+                            <Receipt className="h-3.5 w-3.5 shrink-0" />
+                            <span>My Expenses</span>
+                        </Link>
                     </nav>
                 </div>
 
                 {/* Primary Actions & User Profile */}
                 <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-                    {(onNewReceiptClick || !isManagerOrAdmin) && (
-                        <Button
-                            onClick={() => {
-                                if (onNewReceiptClick) {
-                                    onNewReceiptClick();
-                                } else {
-                                    router.visit('/portal/expenses');
-                                }
-                            }}
-                            className="bg-emerald-500 h-7 w-7 p-0 sm:h-8.5 sm:w-auto sm:px-3 font-medium text-zinc-950 shadow-sm shadow-emerald-500/20 hover:bg-emerald-400 active:scale-[0.95] text-xs rounded-full sm:rounded-xl flex items-center justify-center shrink-0"
-                            title="Upload Receipt"
-                        >
-                            <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 stroke-[2.5]" />
-                            <span className="hidden sm:inline ml-1 font-semibold">Upload Receipt</span>
-                        </Button>
-                    )}
+                    <Button
+                        onClick={() => {
+                            if (onNewReceiptClick) {
+                                onNewReceiptClick();
+                            } else {
+                                router.visit('/portal/expenses');
+                            }
+                        }}
+                        className="bg-emerald-500 h-7 w-7 p-0 sm:h-8.5 sm:w-auto sm:px-3 font-medium text-zinc-950 shadow-sm shadow-emerald-500/20 hover:bg-emerald-400 active:scale-[0.95] text-xs rounded-full sm:rounded-xl flex items-center justify-center shrink-0"
+                        title="Upload Receipt"
+                    >
+                        <Plus className="h-3.5 w-3.5 sm:h-4 sm:w-4 stroke-[2.5]" />
+                        <span className="hidden sm:inline ml-1 font-semibold">Upload Receipt</span>
+                    </Button>
 
                     {/* User dropdown */}
                     <div className="relative">
@@ -168,7 +178,7 @@ export default function PortalNavbar({
                         </button>
 
                         {userMenuOpen && (
-                            <div className="absolute right-0 mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900 p-1.5 shadow-2xl shadow-black/80">
+                            <div className="absolute right-0 mt-2 w-56 rounded-xl border border-zinc-800 bg-zinc-900 p-1.5 shadow-2xl shadow-black/80 z-50">
                                 <div className="border-b border-zinc-800 px-3 py-2">
                                     <p className="text-xs font-medium text-zinc-200">
                                         {user?.name}

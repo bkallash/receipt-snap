@@ -43,7 +43,11 @@ final class PolicyEnforcementService
         }
 
         // Rule 3: Missing Receipt Check
-        $threshold = (float) config('receipt-snap.policies.require_receipt_threshold_amount', 25.00);
+        $orgSettings = $expense->organization?->settings ?? [];
+        $threshold = isset($orgSettings['require_receipt_threshold'])
+            ? (float) $orgSettings['require_receipt_threshold']
+            : (float) config('receipt-snap.policies.require_receipt_threshold_amount', 25.00);
+
         $hasImages = $expense->receiptImages->isNotEmpty();
         $hasReceipt = $expense->receipt !== null;
 
@@ -60,7 +64,10 @@ final class PolicyEnforcementService
         }
 
         // Rule 4: Weekend / Non-Business Day Check
-        $flagWeekends = (bool) config('receipt-snap.policies.flag_weekend_transactions', true);
+        $flagWeekends = isset($orgSettings['flag_weekend_transactions'])
+            ? (bool) $orgSettings['flag_weekend_transactions']
+            : (bool) config('receipt-snap.policies.flag_weekend_transactions', true);
+
         if ($flagWeekends && $expense->expense_date && $expense->expense_date->isWeekend()) {
             $flags[] = [
                 'code' => 'WEEKEND_TRANSACTION',

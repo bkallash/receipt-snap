@@ -8,7 +8,6 @@ use App\Models\Expense;
 use App\Models\ReceiptImage;
 use App\Support\TenantContext;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\DB;
 
 final class DuplicateDetectionService
 {
@@ -43,10 +42,10 @@ final class DuplicateDetectionService
         $windowDays = (int) config('receipt-snap.duplicate_detection.data_match_window_days', 30);
         $date = CarbonImmutable::parse($expenseDate);
 
-        $likeOperator = DB::connection()->getDriverName() === 'pgsql' ? 'ILIKE' : 'LIKE';
+        $term = mb_strtolower($merchantName);
 
         $query = Expense::where('amount', $amount)
-            ->where('merchant_name', $likeOperator, $merchantName)
+            ->whereRaw('LOWER(merchant_name) LIKE ?', [$term])
             ->whereBetween('expense_date', [
                 $date->subDays($windowDays)->toDateString(),
                 $date->addDays($windowDays)->toDateString(),

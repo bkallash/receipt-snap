@@ -23,7 +23,8 @@ final class ExpensePolicy
             return true;
         }
 
-        $role = $user->roleIn($expense->organization);
+        $org = $expense->organization;
+        $role = $org instanceof Organization ? $user->roleIn($org) : null;
 
         return in_array($role, [UserRole::Manager, UserRole::Admin, UserRole::Owner, UserRole::Accountant], true);
     }
@@ -66,7 +67,8 @@ final class ExpensePolicy
             return false; // Cannot approve own expense
         }
 
-        $role = $user->roleIn($expense->organization);
+        $org = $expense->organization;
+        $role = $org instanceof Organization ? $user->roleIn($org) : null;
 
         return in_array($role, [UserRole::Manager, UserRole::Admin, UserRole::Owner], true)
             && in_array($expense->status, [ExpenseStatus::Submitted, ExpenseStatus::UnderReview], true);
@@ -78,7 +80,8 @@ final class ExpensePolicy
             return false;
         }
 
-        $role = $user->roleIn($expense->organization);
+        $org = $expense->organization;
+        $role = $org instanceof Organization ? $user->roleIn($org) : null;
 
         return in_array($role, [UserRole::Manager, UserRole::Admin, UserRole::Owner], true)
             && in_array($expense->status, [ExpenseStatus::Submitted, ExpenseStatus::UnderReview], true);
@@ -86,9 +89,6 @@ final class ExpensePolicy
 
     public function adminCorrect(User $user, Expense $expense): bool
     {
-        $role = $user->roleIn($expense->organization);
-
-        return in_array($role, [UserRole::Admin, UserRole::Owner, UserRole::Accountant], true)
-            && $expense->status === ExpenseStatus::Approved;
+        return false;
     }
 }

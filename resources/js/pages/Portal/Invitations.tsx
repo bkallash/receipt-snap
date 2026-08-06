@@ -138,10 +138,10 @@ export default function Invitations({
                     <div className="flex items-center gap-3">
                         {has_organization && (
                             <a
-                                href="/portal/expenses"
+                                href="/dashboard"
                                 className="hidden items-center gap-1.5 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs font-medium text-zinc-300 transition-colors hover:border-zinc-700 hover:text-white sm:flex"
                             >
-                                Back to Expenses
+                                Back to Portal
                                 <ArrowRight className="h-3.5 w-3.5" />
                             </a>
                         )}
@@ -198,7 +198,7 @@ export default function Invitations({
                             </div>
                         </div>
                         <a
-                            href="/portal/expenses"
+                            href="/dashboard"
                             className="inline-flex items-center gap-2 shrink-0 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-semibold text-zinc-950 transition-colors hover:bg-emerald-400 active:scale-[0.98]"
                         >
                             Open Dashboard
@@ -402,7 +402,7 @@ export default function Invitations({
             {/* Footer */}
             <footer className="border-t border-zinc-900 py-6 text-center text-xs text-zinc-600">
                 <div className="mx-auto max-w-6xl px-4">
-                    <p>© {new Date().getFullYear()} ReceiptFlow Inc. All rights reserved.</p>
+                    <p>© {new Date().getFullYear()} ReceiptSnap Inc. All rights reserved.</p>
                 </div>
             </footer>
         </div>

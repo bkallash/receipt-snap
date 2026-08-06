@@ -20,6 +20,9 @@ final class ExpenseCategory extends Model
     protected $fillable = [
         'organization_id',
         'name',
+        'gl_code',
+        'default_tax_rate',
+        'requires_itemized_tax',
         'description',
         'icon',
         'color',
@@ -33,7 +36,9 @@ final class ExpenseCategory extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'requires_itemized_tax' => 'boolean',
         'max_amount' => 'decimal:2',
+        'default_tax_rate' => 'decimal:2',
         'budget_amount' => 'decimal:2',
         'budget_period' => BudgetPeriod::class,
         'sort_order' => 'integer',

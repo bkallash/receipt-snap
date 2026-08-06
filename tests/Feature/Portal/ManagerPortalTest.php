@@ -17,6 +17,8 @@ it('prevents regular employee from accessing manager dashboard', function (): vo
     $org = Organization::factory()->create();
     $org->users()->attach($user->id, ['role' => 'employee', 'is_active' => true, 'joined_at' => now()]);
 
+    TenantContext::set($org->id);
+
     $response = $this->actingAs($user)->get('/portal/manager/expenses');
 
     $response->assertForbidden();

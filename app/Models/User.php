@@ -56,7 +56,7 @@ class User extends Authenticatable implements PasskeyUser
 
     public function isSuperAdmin(): bool
     {
-        return $this->email === 'admin@receiptflow.test' || $this->email === 'qwe@qwe.qwe';
+        return $this->email === 'admin@receiptsnap.test' || $this->email === 'qwe@qwe.qwe';
     }
 
     /**

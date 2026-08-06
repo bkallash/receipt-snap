@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Enums\AggregateType;
 use App\Enums\ExpenseStatus;
 use App\Enums\UserRole;
 use App\Http\Resources\V1\ExpenseCategoryResource;
 use App\Http\Resources\V1\ExpenseResource;
 use App\Models\Department;
 use App\Models\Expense;
+use App\Models\ExpenseAggregate;
 use App\Models\ExpenseCategory;
 use App\Models\Organization;
 use App\Services\BudgetService;
@@ -103,15 +105,38 @@ final class ManagerPortalController extends Controller
 
         $categories = ExpenseCategory::where('is_active', true)->get();
 
-        // Calculate team stats
-        $pendingExpenses = $expenses->filter(fn ($e) => in_array($e->status, [ExpenseStatus::Submitted, ExpenseStatus::UnderReview], true));
-        $approvedExpenses = $expenses->filter(fn ($e) => $e->status === ExpenseStatus::Approved);
-        $rejectedExpenses = $expenses->filter(fn ($e) => $e->status === ExpenseStatus::Rejected);
+        // Calculate team stats using pre-computed aggregate with fallback
+        $aggregate = ExpenseAggregate::where('organization_id', $activeOrg->id)
+            ->where('aggregate_type', AggregateType::Organization->value)
+            ->where('period', 'monthly')
+            ->where('period_start', now()->startOfMonth()->toDateString())
+            ->first();
 
-        $pendingAmount = (float) $pendingExpenses->sum('amount');
-        $approvedAmount = (float) $approvedExpenses->sum('amount');
+        if ($aggregate) {
+            $stats = [
+                'pending_count' => $aggregate->submitted_count,
+                'pending_amount' => (float) $aggregate->pending_amount,
+                'approved_count' => $aggregate->approved_count,
+                'approved_amount' => (float) $aggregate->approved_amount,
+                'rejected_count' => $aggregate->rejected_count,
+                'flagged_count' => $aggregate->flagged_count,
+                'total_count' => $aggregate->total_count,
+            ];
+        } else {
+            $pendingExpenses = $expenses->filter(fn ($e) => in_array($e->status, [ExpenseStatus::Submitted, ExpenseStatus::UnderReview], true));
+            $approvedExpenses = $expenses->filter(fn ($e) => $e->status === ExpenseStatus::Approved);
+            $rejectedExpenses = $expenses->filter(fn ($e) => $e->status === ExpenseStatus::Rejected);
 
-        $flaggedCount = $expenses->filter(fn ($e) => $e->hasPolicyViolations())->count();
+            $stats = [
+                'pending_count' => $pendingExpenses->count(),
+                'pending_amount' => (float) $pendingExpenses->sum('amount'),
+                'approved_count' => $approvedExpenses->count(),
+                'approved_amount' => (float) $approvedExpenses->sum('amount'),
+                'rejected_count' => $rejectedExpenses->count(),
+                'flagged_count' => $expenses->filter(fn ($e) => $e->hasPolicyViolations())->count(),
+                'total_count' => $expenses->count(),
+            ];
+        }
 
         return Inertia::render('ManagerDashboard', [
             'expenses' => ExpenseResource::collection($expenses)->resolve(),
@@ -126,15 +151,7 @@ final class ManagerPortalController extends Controller
                 'budget_period' => $departmentObj?->budget_period?->value,
             ],
             'budget_status' => $budgetStatus,
-            'stats' => [
-                'pending_count' => $pendingExpenses->count(),
-                'pending_amount' => $pendingAmount,
-                'approved_count' => $approvedExpenses->count(),
-                'approved_amount' => $approvedAmount,
-                'rejected_count' => $rejectedExpenses->count(),
-                'flagged_count' => $flaggedCount,
-                'total_count' => $expenses->count(),
-            ],
+            'stats' => $stats,
             'organization' => [
                 'id' => $activeOrg->id,
                 'name' => $activeOrg->name,

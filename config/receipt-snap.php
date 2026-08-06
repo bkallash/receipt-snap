@@ -39,4 +39,15 @@ return [
         'flag_weekend_transactions' => (bool) env('RECEIPT_FLAG_WEEKENDS', true),
         'strict_budget_enforcement' => (bool) env('RECEIPT_STRICT_BUDGET', false),
     ],
+
+    'audit' => [
+        'enabled' => (bool) env('AUDIT_LOG_ENABLED', true),
+        'capture_ip' => (bool) env('AUDIT_CAPTURE_IP', true),
+        'capture_user_agent' => (bool) env('AUDIT_CAPTURE_USER_AGENT', true),
+    ],
+
+    'aggregates' => [
+        'enabled' => (bool) env('AGGREGATES_ENABLED', true),
+        'recalculate_schedule' => env('AGGREGATES_RECALCULATE_SCHEDULE', '02:00'),
+    ],
 ];

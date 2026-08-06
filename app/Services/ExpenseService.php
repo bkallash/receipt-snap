@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Enums\ApprovalStatus;
+use App\Enums\AuditAction;
 use App\Enums\ExpenseStatus;
 use App\Models\ApprovalStep;
 use App\Models\Expense;
@@ -18,11 +19,12 @@ use Illuminate\Support\Str;
 final class ExpenseService
 {
     public function __construct(
-        private readonly PolicyEnforcementService $policyEnforcementService
+        private readonly PolicyEnforcementService $policyEnforcementService,
+        private readonly AuditLogService $auditLogService
     ) {}
 
     /**
-     * Create an expense atomically with optional line items and uploaded receipt images (Fix H).
+     * Create an expense atomically with optional line items and uploaded receipt images.
      *
      * @param  array<string, mixed>  $data
      * @param  array<UploadedFile>  $uploadedFiles
@@ -93,11 +95,23 @@ final class ExpenseService
                 $expense->update(['metadata' => $meta]);
             }
 
-            return $expense->fresh();
+            $freshExpense = $expense->fresh();
+
+            $this->auditLogService->record(
+                action: AuditAction::ExpenseCreated,
+                auditable: $freshExpense,
+                beforeState: null,
+                afterState: $freshExpense->toArray(),
+                actor: $user
+            );
+
+            return $freshExpense;
         } catch (\Throwable $e) {
             // Clean up stored files if DB transaction fails
             foreach ($storedImagesData as $imgData) {
-                Storage::disk($imgData['disk'])->delete($imgData['file_path']);
+                if (is_string($imgData['file_path'])) {
+                    Storage::disk((string) $imgData['disk'])->delete($imgData['file_path']);
+                }
             }
 
             throw $e;
@@ -111,6 +125,12 @@ final class ExpenseService
      */
     public function updateExpense(Expense $expense, array $data): Expense
     {
+        if (in_array($expense->status, [ExpenseStatus::Approved, ExpenseStatus::Reimbursed], true)) {
+            throw new \RuntimeException('Approved expenses are immutable and cannot be updated.');
+        }
+
+        $beforeState = $expense->toArray();
+
         DB::transaction(function () use ($expense, $data): void {
             $expenseUpdates = array_diff_key($data, array_flip(['line_items', 'receipt_images']));
             if (! empty($expenseUpdates)) {
@@ -139,7 +159,16 @@ final class ExpenseService
         $meta['policy_flags'] = $flags;
         $expense->update(['metadata' => $meta]);
 
-        return $expense->fresh();
+        $freshExpense = $expense->fresh();
+
+        $this->auditLogService->record(
+            action: AuditAction::ExpenseUpdated,
+            auditable: $freshExpense,
+            beforeState: $beforeState,
+            afterState: $freshExpense->toArray()
+        );
+
+        return $freshExpense;
     }
 
     public function submitExpense(Expense $expense): Expense
@@ -147,6 +176,8 @@ final class ExpenseService
         if (! in_array($expense->status, [ExpenseStatus::Draft, ExpenseStatus::Rejected], true)) {
             throw new \RuntimeException('Only draft or rejected expenses can be submitted.');
         }
+
+        $beforeState = $expense->toArray();
 
         $flags = $this->policyEnforcementService->evaluate($expense);
         $meta = $expense->metadata ?? [];
@@ -162,7 +193,16 @@ final class ExpenseService
             'metadata' => $meta,
         ]);
 
-        return $expense->fresh();
+        $freshExpense = $expense->fresh();
+
+        $this->auditLogService->record(
+            action: AuditAction::ExpenseSubmitted,
+            auditable: $freshExpense,
+            beforeState: $beforeState,
+            afterState: $freshExpense->toArray()
+        );
+
+        return $freshExpense;
     }
 
     public function approveExpense(Expense $expense, User $approver, ?string $comment = null): Expense
@@ -170,6 +210,8 @@ final class ExpenseService
         if ($approver->id === $expense->user_id) {
             throw new \RuntimeException('Users cannot approve their own expenses.');
         }
+
+        $beforeState = $expense->toArray();
 
         DB::transaction(function () use ($expense, $approver, $comment): void {
             $expense->update([
@@ -187,7 +229,18 @@ final class ExpenseService
             ]);
         });
 
-        return $expense->fresh();
+        $freshExpense = $expense->fresh();
+
+        $this->auditLogService->record(
+            action: AuditAction::ExpenseApproved,
+            auditable: $freshExpense,
+            beforeState: $beforeState,
+            afterState: $freshExpense->toArray(),
+            actor: $approver,
+            metadata: ['comment' => $comment]
+        );
+
+        return $freshExpense;
     }
 
     public function rejectExpense(Expense $expense, User $approver, string $reason): Expense
@@ -195,6 +248,8 @@ final class ExpenseService
         if ($approver->id === $expense->user_id) {
             throw new \RuntimeException('Users cannot reject their own expenses.');
         }
+
+        $beforeState = $expense->toArray();
 
         DB::transaction(function () use ($expense, $approver, $reason): void {
             $expense->update([
@@ -213,18 +268,25 @@ final class ExpenseService
             ]);
         });
 
-        return $expense->fresh();
+        $freshExpense = $expense->fresh();
+
+        $this->auditLogService->record(
+            action: AuditAction::ExpenseRejected,
+            auditable: $freshExpense,
+            beforeState: $beforeState,
+            afterState: $freshExpense->toArray(),
+            actor: $approver,
+            metadata: ['rejection_reason' => $reason]
+        );
+
+        return $freshExpense;
     }
 
+    /**
+     * @param  array<string, mixed>  $updates
+     */
     public function adminCorrectExpense(Expense $expense, array $updates): Expense
     {
-        if ($expense->status !== ExpenseStatus::Approved) {
-            throw new \RuntimeException('Admin correction is only available for approved expenses.');
-        }
-
-        $allowed = array_intersect_key($updates, array_flip(['expense_category_id', 'description', 'metadata']));
-        $expense->update($allowed);
-
-        return $expense->fresh();
+        throw new \RuntimeException('Approved expenses are immutable and cannot be updated.');
     }
 }

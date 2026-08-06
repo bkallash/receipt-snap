@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('quota:reset-monthly-ai')->monthlyOn(1, '00:00');
 Schedule::command('receipts:retry-pending-scans')->everyFiveMinutes();
+Schedule::command('aggregates:recalculate')->dailyAt('02:00');

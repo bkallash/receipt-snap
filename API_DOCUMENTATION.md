@@ -1,6 +1,6 @@
-# 🧾 ReceiptFlow — API Documentation (V1)
+# 🧾 ReceiptSnap — API Documentation (V1)
 
-Welcome to the **ReceiptFlow REST API V1** documentation. ReceiptFlow provides enterprise-grade, multi-tenant receipt capture, expense management, AI metadata extraction, department/category budgeting, and automated policy enforcement workflows.
+Welcome to the **ReceiptSnap REST API V1** documentation. ReceiptSnap provides enterprise-grade, multi-tenant receipt capture, expense management, AI metadata extraction, department/category budgeting, and automated policy enforcement workflows.
 
 For complete developer architecture, environment variable setup, and system configuration details, see the [Developer & API Guide](file:///d:/code%20Projects/Laravel/receipt-snap/DEVELOPER_GUIDE.md).
 
@@ -18,7 +18,7 @@ http://localhost:8000/api/v1
 
 ## 🔑 Authentication & Multi-Tenancy Strategy
 
-ReceiptFlow uses **Laravel Sanctum Bearer Tokens** for API authentication.
+ReceiptSnap uses **Laravel Sanctum Bearer Tokens** for API authentication.
 
 ### Headers Required for Authenticated Endpoints
 ```http
@@ -127,6 +127,17 @@ Content-Type: application/json
 | **Receipt Scanning** | `/expenses/{id}/scan` | `POST` | Bearer | Upload image & start AI scan |
 | **Receipt Scanning** | `/expenses/{id}/scan-status` | `GET` | Bearer | Poll AI extraction status |
 | **Receipt Scanning** | `/expenses/{id}/scan/retry` | `POST` | Bearer | Retry failed AI scan |
+| **Reimbursements** | `/reimbursement-batches` | `GET/POST` | Bearer | List or create reimbursement batches |
+| **Reimbursements** | `/reimbursement-batches/{id}` | `GET` | Bearer | View reimbursement batch details |
+| **Reimbursements** | `/reimbursement-batches/{id}/execute` | `POST` | Bearer | Mark batch as completed/executed |
+| **Reimbursements** | `/reimbursement-batches/{id}/bank-file` | `GET` | Bearer | Download NACHA/CSV bank payout file |
+| **Reimbursements** | `/reimbursements/mark-reimbursed` | `POST` | Bearer | Mark individual approved expenses as reimbursed |
+| **Accounting Exports** | `/accountant/export-erp` | `GET` | Bearer | Export transactions in CSV, QuickBooks, or Xero format |
+| **Accounting Exports** | `/accountant/download-compliance-package` | `GET` | Bearer | Download audit-ready compliance ZIP package |
+| **Audit Logs** | `/audit-logs` | `GET` | Bearer | List immutable audit log entries |
+| **Audit Logs** | `/audit-logs/{uuid}` | `GET` | Bearer | Get specific audit log entry by UUID |
+| **Aggregates** | `/aggregates` | `GET` | Bearer | List pre-computed performance aggregates |
+| **Aggregates** | `/aggregates/summary` | `GET` | Bearer | Get organization aggregate summary metrics |
 
 ---
 
@@ -628,3 +639,169 @@ Polls the extraction status and extracted metadata attributes.
   }
 }
 ```
+
+---
+
+## 7. Audit Logs (`/api/v1/audit-logs`)
+
+### 7.1 List Audit Logs
+Returns a paginated list of immutable audit log entries for the organization.
+
+- **HTTP Method**: `GET`
+- **Path**: `/api/v1/audit-logs`
+- **Authentication**: Bearer Token (`owner`, `admin`, `manager`, or `accountant` role)
+- **Query Parameters**:
+  - `action`: Filter by AuditAction enum value (e.g. `expense.created`, `expense.approved`)
+  - `auditable_type`: Filter by entity class name (e.g. `Expense`)
+  - `auditable_id`: Filter by entity primary key
+  - `actor_id`: Filter by actor user ID
+  - `from`: Filter records created on or after date (`YYYY-MM-DD`)
+  - `to`: Filter records created on or before date (`YYYY-MM-DD`)
+
+#### Response (`200 OK`)
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "uuid": "8f7e6d5c-4b3a-2109-8765-43210fedcba9",
+      "action": "expense.approved",
+      "auditable_type": "Expense",
+      "auditable_id": 42,
+      "before_state": { "status": "submitted" },
+      "after_state": { "status": "approved" },
+      "checksum": "a3f5b2c...",
+      "is_checksum_valid": true,
+      "created_at": "2026-08-03T10:00:00Z"
+    }
+  ]
+}
+```
+
+---
+
+### 7.2 Get Audit Log Details
+Returns single audit log entry by UUID.
+
+- **HTTP Method**: `GET`
+- **Path**: `/api/v1/audit-logs/{uuid}`
+- **Authentication**: Bearer Token (`owner`, `admin`, `manager`, or `accountant` role)
+
+---
+
+## 8. Pre-computed Aggregates (`/api/v1/aggregates`)
+
+### 8.1 List Aggregates
+Returns paginated pre-computed performance aggregates.
+
+- **HTTP Method**: `GET`
+- **Path**: `/api/v1/aggregates`
+- **Authentication**: Bearer Token (`owner`, `admin`, `manager`, or `accountant` role)
+- **Query Parameters**:
+  - `type`: `organization`, `department`, or `category`
+  - `period`: `monthly`, `quarterly`, or `annual`
+  - `aggregate_id`: Department or Category ID
+  - `from`: Start date filter (`YYYY-MM-DD`)
+  - `to`: End date filter (`YYYY-MM-DD`)
+
+---
+
+### 8.2 Get Dashboard Aggregates Summary
+Returns pre-computed organization summary, department breakdown, and category breakdown for dashboard rendering.
+
+- **HTTP Method**: `GET`
+- **Path**: `/api/v1/aggregates/summary`
+- **Authentication**: Bearer Token (`owner`, `admin`, `manager`, or `accountant` role)
+- **Query Parameters**:
+  - `period`: `monthly` (default), `quarterly`, or `annual`
+  - `date`: As-of date (`YYYY-MM-DD`, defaults to today)
+
+#### Response (`200 OK`)
+```json
+{
+  "period": "monthly",
+  "period_start": "2026-08-01",
+  "organization_summary": {
+    "total_count": 150,
+    "approved_count": 120,
+    "pending_count": 20,
+    "rejected_count": 10,
+    "approved_amount": 14500.00,
+    "pending_amount": 2300.00,
+    "flagged_count": 3
+  },
+  "department_breakdown": [],
+  "category_breakdown": []
+}
+```
+
+---
+
+## 9. Reimbursements & Payout Batches (`/api/v1/reimbursement-batches`)
+
+### 9.1 List Reimbursement Batches
+Returns a paginated list of payout batches.
+
+- **HTTP Method**: `GET`
+- **Path**: `/api/v1/reimbursement-batches`
+- **Authentication**: Bearer Token (`owner`, `admin`, or `accountant` role)
+
+---
+
+### 9.2 Create Reimbursement Batch
+Groups approved expenses into a payout batch.
+
+- **HTTP Method**: `POST`
+- **Path**: `/api/v1/reimbursement-batches`
+- **Authentication**: Bearer Token (`owner`, `admin`, or `accountant` role)
+- **Request Body**:
+  - `expense_ids`: `array` of integers (required)
+  - `payment_method`: `string` (`ach`, `check`, `payroll`, `wire`)
+  - `notes`: `string` (optional)
+
+---
+
+### 9.3 Execute Batch Payout
+Marks a reimbursement batch as executed and transitions associated expenses to `reimbursed`.
+
+- **HTTP Method**: `POST`
+- **Path**: `/api/v1/reimbursement-batches/{batch}/execute`
+- **Authentication**: Bearer Token (`owner`, `admin`, or `accountant` role)
+
+---
+
+### 9.4 Download Bank Payout File
+Generates and downloads bank-ready payout files (CSV / NACHA format).
+
+- **HTTP Method**: `GET`
+- **Path**: `/api/v1/reimbursement-batches/{batch}/bank-file`
+- **Authentication**: Bearer Token (`owner`, `admin`, or `accountant` role)
+
+---
+
+## 10. Accounting & ERP Exports (`/api/v1/accountant`)
+
+### 10.1 Export ERP Data
+Downloads transaction data formatted for accounting software.
+
+- **HTTP Method**: `GET`
+- **Path**: `/api/v1/accountant/export-erp`
+- **Authentication**: Bearer Token (`owner`, `admin`, or `accountant` role)
+- **Query Parameters**:
+  - `format`: `csv` (default), `quickbooks`, or `xero`
+  - `status`: Filter by status (`approved`, `reimbursed`, `all`)
+  - `from`: Start date (`YYYY-MM-DD`)
+  - `to`: End date (`YYYY-MM-DD`)
+
+---
+
+### 10.2 Download Compliance ZIP Package
+Generates a downloadable ZIP archive containing approved expense records, audit log CSVs, and original uploaded receipt images.
+
+- **HTTP Method**: `GET`
+- **Path**: `/api/v1/accountant/download-compliance-package`
+- **Authentication**: Bearer Token (`owner`, `admin`, or `accountant` role)
+- **Query Parameters**:
+  - `from`: Start date (`YYYY-MM-DD`)
+  - `to`: End date (`YYYY-MM-DD`)
+

@@ -2,14 +2,18 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\V1\AccountantExportController;
+use App\Http\Controllers\Api\V1\AuditLogController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\DepartmentController;
+use App\Http\Controllers\Api\V1\ExpenseAggregateController;
 use App\Http\Controllers\Api\V1\ExpenseCategoryController;
 use App\Http\Controllers\Api\V1\ExpenseController;
 use App\Http\Controllers\Api\V1\OrganizationController;
 use App\Http\Controllers\Api\V1\OrganizationInvitationController;
 use App\Http\Controllers\Api\V1\OrganizationMemberController;
 use App\Http\Controllers\Api\V1\ReceiptScanController;
+use App\Http\Controllers\Api\V1\ReimbursementBatchController;
 use App\Http\Middleware\CheckAiQuota;
 use App\Http\Middleware\EnsureIdempotency;
 use App\Http\Middleware\SetOrganizationContext;
@@ -56,10 +60,28 @@ Route::prefix('v1')->group(function (): void {
             Route::post('expenses/{expense}/reject', [ExpenseController::class, 'reject']);
             Route::put('expenses/{expense}/admin-correct', [ExpenseController::class, 'adminCorrect']);
 
+            // Reimbursement & Batch Payout Routes (Accountant / Admin / Owner)
+            Route::apiResource('reimbursement-batches', ReimbursementBatchController::class)->only(['index', 'store', 'show']);
+            Route::post('reimbursement-batches/{batch}/execute', [ReimbursementBatchController::class, 'execute']);
+            Route::get('reimbursement-batches/{batch}/bank-file', [ReimbursementBatchController::class, 'downloadBankFile']);
+            Route::post('reimbursements/mark-reimbursed', [ReimbursementBatchController::class, 'markReimbursed']);
+
+            // Accounting & ERP Exports
+            Route::get('accountant/export-erp', [AccountantExportController::class, 'exportErp']);
+            Route::get('accountant/download-compliance-package', [AccountantExportController::class, 'downloadCompliancePackage']);
+
             // Receipt scan routes
             Route::post('expenses/{expense}/scan', [ReceiptScanController::class, 'scan'])->middleware(CheckAiQuota::class);
             Route::get('expenses/{expense}/scan-status', [ReceiptScanController::class, 'status']);
             Route::post('expenses/{expense}/scan/retry', [ReceiptScanController::class, 'retry'])->middleware(CheckAiQuota::class);
+
+            // Audit Logs
+            Route::get('audit-logs', [AuditLogController::class, 'index']);
+            Route::get('audit-logs/{auditLog}', [AuditLogController::class, 'show']);
+
+            // Pre-computed Aggregates
+            Route::get('aggregates', [ExpenseAggregateController::class, 'index']);
+            Route::get('aggregates/summary', [ExpenseAggregateController::class, 'summary']);
         });
     });
 });

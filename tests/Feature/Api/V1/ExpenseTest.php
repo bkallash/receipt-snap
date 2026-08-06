@@ -94,7 +94,7 @@ it('prevents manager from approving their own expense', function (): void {
     $response->assertForbidden();
 });
 
-it('allows admin/accountant to perform correction on approved expense', function (): void {
+it('prevents admin/accountant from updating approved expense because approved expenses are immutable', function (): void {
     $admin = User::factory()->create();
     $org = Organization::factory()->create();
     $org->users()->attach($admin->id, ['role' => 'admin', 'is_active' => true, 'joined_at' => now()]);
@@ -109,9 +109,7 @@ it('allows admin/accountant to perform correction on approved expense', function
             'description' => 'Corrected notes by admin',
         ]);
 
-    $response->assertOk()
-        ->assertJsonPath('data.description', 'Corrected notes by admin')
-        ->assertJsonPath('data.status', 'approved');
+    $response->assertForbidden();
 });
 
 it('rejects file upload with spoofed extension', function (): void {

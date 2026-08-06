@@ -52,7 +52,9 @@ export default function ExpenseApprovalModal({
             .then((res) => (res.ok ? res.json() : null))
             .then((data) => {
                 if (data?.data) {
-                    setDetailExpense(data.data);
+                    // Keep caller-supplied context (can_decide, is_own_claim,
+                    // department_name) that the API resource does not return.
+                    setDetailExpense({ ...expense, ...data.data });
                 }
             })
             .catch(() => {})
@@ -72,6 +74,13 @@ export default function ExpenseApprovalModal({
 
     const rawLineItems = currentExp.line_items || currentExp.lineItems || [];
     const lineItems = Array.isArray(rawLineItems) ? rawLineItems : [];
+
+    const rawApprovalSteps = currentExp.approval_steps || currentExp.approvalSteps || [];
+    const approvalSteps = Array.isArray(rawApprovalSteps) ? rawApprovalSteps : [];
+
+    // Callers that know the viewer cannot decide (e.g. their own claim) pass
+    // can_decide explicitly; other callers leave it undefined and keep the actions.
+    const canDecide = currentExp.can_decide !== false;
 
     const submitter = currentExp.submitter || currentExp.user;
 
@@ -313,6 +322,40 @@ export default function ExpenseApprovalModal({
                             )}
                         </div>
 
+                        {/* Approval History */}
+                        {approvalSteps.length > 0 && (
+                            <div className="space-y-2">
+                                <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                                    Approval History
+                                </h4>
+                                <ol className="space-y-2">
+                                    {approvalSteps.map((step: any, idx: number) => (
+                                        <li
+                                            key={step.id || idx}
+                                            className="flex items-start justify-between gap-3 rounded-xl border border-zinc-800/80 bg-zinc-900/40 p-3"
+                                        >
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-semibold text-zinc-200 capitalize">
+                                                    {String(step.status || '').replace(/_/g, ' ')}
+                                                    <span className="ml-1.5 font-normal text-zinc-500">
+                                                        by {step.approver?.name || 'Pending approver'}
+                                                    </span>
+                                                </p>
+                                                {step.comment && (
+                                                    <p className="mt-0.5 text-[11px] text-zinc-400">{step.comment}</p>
+                                                )}
+                                            </div>
+                                            <span className="shrink-0 text-[10px] text-zinc-500">
+                                                {step.acted_at
+                                                    ? new Date(step.acted_at).toLocaleDateString()
+                                                    : 'Awaiting'}
+                                            </span>
+                                        </li>
+                                    ))}
+                                </ol>
+                            </div>
+                        )}
+
                         {/* Rejection Form Input */}
                         {showRejectInput && (
                             <div className="rounded-xl border border-rose-500/40 bg-rose-500/5 p-4 space-y-2 animate-in fade-in duration-150">
@@ -342,43 +385,54 @@ export default function ExpenseApprovalModal({
                     </Button>
 
                     <div className="flex items-center gap-2 sm:gap-3">
-                        {!showRejectInput ? (
-                            <Button
-                                onClick={() => setShowRejectInput(true)}
-                                disabled={isSubmitting}
-                                variant="outline"
-                                className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 text-xs h-9"
-                            >
-                                <XCircle className="mr-1.5 h-3.5 w-3.5" />
-                                Reject...
-                            </Button>
+                        {!canDecide ? (
+                            <p className="flex items-center gap-1.5 text-xs text-amber-400">
+                                <AlertTriangle className="h-3.5 w-3.5" />
+                                {currentExp.is_own_claim
+                                    ? 'You cannot decide your own claim.'
+                                    : 'This claim is no longer awaiting a decision.'}
+                            </p>
                         ) : (
-                            <Button
-                                onClick={handleReject}
-                                disabled={isSubmitting || !rejectionReason.trim()}
-                                className="bg-rose-600 text-white hover:bg-rose-500 text-xs h-9"
-                            >
-                                {isSubmitting ? (
-                                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                            <>
+                                {!showRejectInput ? (
+                                    <Button
+                                        onClick={() => setShowRejectInput(true)}
+                                        disabled={isSubmitting}
+                                        variant="outline"
+                                        className="border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 text-xs h-9"
+                                    >
+                                        <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                                        Reject...
+                                    </Button>
                                 ) : (
-                                    <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                                    <Button
+                                        onClick={handleReject}
+                                        disabled={isSubmitting || !rejectionReason.trim()}
+                                        className="bg-rose-600 text-white hover:bg-rose-500 text-xs h-9"
+                                    >
+                                        {isSubmitting ? (
+                                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                        ) : (
+                                            <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                                        )}
+                                        Confirm Rejection
+                                    </Button>
                                 )}
-                                Confirm Rejection
-                            </Button>
-                        )}
 
-                        <Button
-                            onClick={handleApprove}
-                            disabled={isSubmitting}
-                            className="bg-emerald-500 font-semibold text-zinc-950 shadow-md shadow-emerald-500/20 hover:bg-emerald-400 active:scale-[0.98] text-xs h-9"
-                        >
-                            {isSubmitting ? (
-                                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                            ) : (
-                                <CheckCircle2 className="mr-1.5 h-3.5 w-3.5 stroke-[2.5]" />
-                            )}
-                            Approve Expense
-                        </Button>
+                                <Button
+                                    onClick={handleApprove}
+                                    disabled={isSubmitting}
+                                    className="bg-emerald-500 font-semibold text-zinc-950 shadow-md shadow-emerald-500/20 hover:bg-emerald-400 active:scale-[0.98] text-xs h-9"
+                                >
+                                    {isSubmitting ? (
+                                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                        <CheckCircle2 className="mr-1.5 h-3.5 w-3.5 stroke-[2.5]" />
+                                    )}
+                                    Approve Expense
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </div>
             </div>

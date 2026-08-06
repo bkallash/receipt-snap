@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Enums\AuditAction;
 use App\Enums\ExpenseStatus;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
@@ -13,6 +14,7 @@ use App\Http\Resources\V1\ExpenseResource;
 use App\Jobs\ProcessReceiptScan;
 use App\Models\Expense;
 use App\Models\Organization;
+use App\Services\AuditLogService;
 use App\Services\ExpenseService;
 use App\Support\TenantContext;
 use Illuminate\Http\JsonResponse;
@@ -25,6 +27,7 @@ final class ExpenseController extends Controller
 {
     public function __construct(
         private readonly ExpenseService $expenseService,
+        private readonly AuditLogService $auditLogService,
     ) {}
 
     public function index(Request $request): AnonymousResourceCollection
@@ -48,6 +51,14 @@ final class ExpenseController extends Controller
 
         if ($request->boolean('flagged')) {
             $query->flagged();
+        }
+
+        if ($search = $request->query('search')) {
+            $term = '%'.mb_strtolower((string) $search).'%';
+            $query->where(function ($q) use ($term): void {
+                $q->whereRaw('LOWER(merchant_name) LIKE ?', [$term])
+                    ->orWhereRaw('LOWER(description) LIKE ?', [$term]);
+            });
         }
 
         $expenses = $query->latest('expense_date')->paginate(20);
@@ -100,7 +111,15 @@ final class ExpenseController extends Controller
     {
         $this->authorize('delete', $expense);
 
+        $beforeState = $expense->toArray();
         $expense->delete();
+
+        $this->auditLogService->record(
+            action: AuditAction::ExpenseDeleted,
+            auditable: $expense,
+            beforeState: $beforeState,
+            afterState: null
+        );
 
         return response()->json(['message' => 'Expense deleted successfully.']);
     }

@@ -1,6 +1,6 @@
-# 🧾 ReceiptFlow — Developer & API Guide
+# 🧾 ReceiptSnap — Developer & API Guide
 
-Welcome to the comprehensive developer documentation for **ReceiptFlow** (Receipt Snap). This guide documents the application architecture, system configuration, multi-tenancy model, AI receipt scanning pipeline, automated policy engine, complete REST API reference, and developer onboarding instructions.
+Welcome to the comprehensive developer documentation for **ReceiptSnap** (Receipt Snap). This guide documents the application architecture, system configuration, multi-tenancy model, AI receipt scanning pipeline, automated policy engine, complete REST API reference, and developer onboarding instructions.
 
 ---
 
@@ -17,13 +17,17 @@ Welcome to the comprehensive developer documentation for **ReceiptFlow** (Receip
    - [Expense Category Management & Budgets](#64-expense-category-management--budgets)
    - [Expense Management & Workflow Actions](#65-expense-management--workflow-actions)
    - [Receipt Scanning & AI Operations](#66-receipt-scanning--ai-operations)
+   - [Audit Logs & Compliance](#67-audit-logs--compliance)
+   - [Pre-computed Aggregates](#68-pre-computed-aggregates)
+   - [Reimbursements & Batch Payouts](#69-reimbursements--batch-payouts)
+   - [Accounting & ERP Exports](#610-accounting--erp-exports)
 7. [Developer Setup, Testing & Tooling](#7-developer-setup-testing--tooling)
 
 ---
 
 ## 1. System Overview & Architecture
 
-ReceiptFlow is built on **Laravel 10+** as an API-first, multi-tenant expense and receipt capture platform.
+ReceiptSnap is built on **Laravel 10+** as an API-first, multi-tenant expense and receipt capture platform.
 
 ### Key Domain Entities
 - **User**: Authenticated user identity. Can belong to multiple organizations with specific roles (`owner`, `admin`, `member`).
@@ -34,12 +38,14 @@ ReceiptFlow is built on **Laravel 10+** as an API-first, multi-tenant expense an
 - **LineItem**: Itemized breakdown attached to an Expense.
 - **Receipt & ReceiptImage**: Physical or digital receipt files uploaded to storage disks with OCR extraction metadata.
 - **ApprovalStep**: Immutable workflow audit log recording submission, approval, rejection, or admin correction events.
+- **AuditLog**: Tamper-evident, immutable audit trail with SHA-256 checksums and PostgreSQL mutation protection triggers.
+- **ExpenseAggregate**: Pre-computed performance table maintaining real-time aggregate rollups for organizations, departments, and categories.
 
 ---
 
 ## 2. Multi-Tenancy & Security Strategy
 
-ReceiptFlow uses a **Hybrid Token Ability Scoping** multi-tenancy architecture.
+ReceiptSnap uses a **Hybrid Token Ability Scoping** multi-tenancy architecture.
 
 ### How Data Isolation Works
 1. **Sanctum Token Ability**: Upon login or switching organizations, Sanctum issues a Bearer Token containing the ability `org:{organization_id}`.
@@ -281,6 +287,49 @@ Poll scan status. Returns extraction status, confidence scores, and extracted at
 
 #### `POST /expenses/{id}/scan/retry`
 Re-queues AI OCR processing in case of transient failures or low confidence score.
+
+---
+
+### 6.7 Audit Logs & Compliance
+
+#### `GET /audit-logs`
+List immutable audit log entries with SHA-256 integrity verification.
+
+#### `GET /audit-logs/{uuid}`
+Retrieve detailed single audit log entry by UUID.
+
+---
+
+### 6.8 Pre-computed Aggregates
+
+#### `GET /aggregates`
+Query high-performance pre-computed rollup metrics.
+
+#### `GET /aggregates/summary`
+Get organization, department, and category aggregate summary for dashboard rendering.
+
+---
+
+### 6.9 Reimbursements & Batch Payouts
+
+#### `GET /reimbursement-batches` | `POST /reimbursement-batches` | `GET /reimbursement-batches/{id}`
+List, create, and inspect payout batches.
+
+#### `POST /reimbursement-batches/{batch}/execute`
+Mark batch as completed/executed, setting linked expense statuses to `reimbursed`.
+
+#### `GET /reimbursement-batches/{batch}/bank-file`
+Generate and download bank-ready payout files (CSV / NACHA format).
+
+---
+
+### 6.10 Accounting & ERP Exports
+
+#### `GET /accountant/export-erp`
+Export approved/reimbursed transactions in CSV, QuickBooks, or Xero format.
+
+#### `GET /accountant/download-compliance-package`
+Download complete audit-ready ZIP compliance archive (receipt images, expenses, and audit logs).
 
 ---
 

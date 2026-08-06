@@ -1,6 +1,6 @@
-# ReceiptFlow — Project Rules & Agent Guidelines (`.agents/AGENTS.md`)
+# ReceiptSnap — Project Rules & Agent Guidelines (`.agents/AGENTS.md`)
 
-This file defines the project-level rules, coding standards, architectural invariants, and testing guidelines for the **ReceiptFlow** (receipt-snap) Laravel workspace. All agentic AI actions and developer contributions in this codebase MUST adhere strictly to these rules.
+This file defines the project-level rules, coding standards, architectural invariants, and testing guidelines for the **ReceiptSnap** (receipt-snap) Laravel workspace. All agentic AI actions and developer contributions in this codebase MUST adhere strictly to these rules.
 
 ---
 

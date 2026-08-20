@@ -65,25 +65,29 @@ final class AccountantDashboardService
         }
 
         // Spend by GL Code / Category
-        $spendByGlCode = Expense::where('expenses.organization_id', $org->id)
+        $spendByGlCode = DB::table('expenses')
+            ->where('expenses.organization_id', $org->id)
+            ->whereNull('expenses.deleted_at')
             ->leftJoin('expense_categories', 'expenses.expense_category_id', '=', 'expense_categories.id')
             ->select(
                 DB::raw("COALESCE(expense_categories.gl_code, 'GL-UNMAPPED') as gl_code"),
                 DB::raw("COALESCE(expense_categories.name, 'Uncategorized') as category_name"),
                 DB::raw('SUM(expenses.amount) as total_amount')
             )
-            ->groupBy('gl_code', 'category_name')
+            ->groupBy('expense_categories.gl_code', 'expense_categories.name')
             ->orderByDesc('total_amount')
             ->get()
-            ->map(fn ($item) => [
-                'gl_code' => $item->gl_code,
-                'category_name' => $item->category_name,
+            ->map(fn ($item): array => [
+                'gl_code' => (string) $item->gl_code,
+                'category_name' => (string) $item->category_name,
                 'total_amount' => (float) $item->total_amount,
             ]);
 
         // Top Unreimbursed Employees
-        $topUnreimbursedEmployees = Expense::where('expenses.organization_id', $org->id)
-            ->whereIn('expenses.status', [ExpenseStatus::Approved, ExpenseStatus::Processing])
+        $topUnreimbursedEmployees = DB::table('expenses')
+            ->where('expenses.organization_id', $org->id)
+            ->whereNull('expenses.deleted_at')
+            ->whereIn('expenses.status', [ExpenseStatus::Approved->value, ExpenseStatus::Processing->value])
             ->join('users', 'expenses.user_id', '=', 'users.id')
             ->select(
                 'users.id as user_id',
@@ -96,10 +100,10 @@ final class AccountantDashboardService
             ->orderByDesc('total_owed')
             ->limit(5)
             ->get()
-            ->map(fn ($item) => [
-                'user_id' => $item->user_id,
-                'employee_name' => $item->employee_name,
-                'employee_email' => $item->employee_email,
+            ->map(fn ($item): array => [
+                'user_id' => (int) $item->user_id,
+                'employee_name' => (string) $item->employee_name,
+                'employee_email' => (string) $item->employee_email,
                 'claim_count' => (int) $item->claim_count,
                 'total_owed' => (float) $item->total_owed,
             ]);

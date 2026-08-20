@@ -28,7 +28,8 @@ final class OrganizationInvitationPolicy
 
     public function revoke(User $user, OrganizationInvitation $invitation): bool
     {
-        $role = $user->roleIn($invitation->organization);
+        $org = $invitation->organization;
+        $role = $org instanceof Organization ? $user->roleIn($org) : null;
 
         if ($role === UserRole::Owner || $role === UserRole::Admin) {
             return true;

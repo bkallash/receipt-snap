@@ -19,7 +19,7 @@ return new class extends Migration
         Schema::table('expenses', function (Blueprint $table): void {
             $table->foreignId('reimbursement_batch_id')->nullable()->after('expense_category_id')
                 ->constrained('reimbursement_batches')->nullOnDelete();
-            $table->string('payment_reference')->nullable()->after('reimimbursed_at' ?? 'reimbursed_at');
+            $table->string('payment_reference')->nullable()->after('reimbursed_at');
             $table->string('transaction_hash')->nullable()->after('payment_reference');
             $table->string('payment_voucher_path')->nullable()->after('transaction_hash');
             $table->boolean('tax_verified')->default(false)->after('payment_voucher_path');

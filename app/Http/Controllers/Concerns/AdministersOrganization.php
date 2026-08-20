@@ -59,13 +59,20 @@ trait AdministersOrganization
         return $user->organizations()
             ->wherePivot('is_active', true)
             ->get()
-            ->filter(fn (Organization $org): bool => in_array($user->roleIn($org), self::ADMIN_ROLES, true))
-            ->map(fn (Organization $org): array => [
-                'id' => $org->id,
-                'name' => $org->name,
-                'slug' => $org->slug,
-                'role' => $user->roleIn($org)?->value,
-            ])
+            ->toBase()
+            ->filter(function ($org) use ($user): bool {
+                /** @var Organization $org */
+                return in_array($user->roleIn($org), self::ADMIN_ROLES, true);
+            })
+            ->map(function ($org) use ($user): array {
+                /** @var Organization $org */
+                return [
+                    'id' => $org->id,
+                    'name' => $org->name,
+                    'slug' => $org->slug,
+                    'role' => $user->roleIn($org)?->value,
+                ];
+            })
             ->values()
             ->all();
     }

@@ -88,7 +88,7 @@ final class ProcessReceiptScan implements ShouldBeUnique, ShouldQueue
         }
 
         $primaryImage = $expense->receiptImages()->orderBy('sort_order')->first();
-        if (! $primaryImage) {
+        if (! $primaryImage instanceof \App\Models\ReceiptImage) {
             Log::warning('No receipt images found for expense.', ['expense_id' => $this->expenseId]);
 
             return;
@@ -103,7 +103,7 @@ final class ProcessReceiptScan implements ShouldBeUnique, ShouldQueue
         try {
             $providerName = (string) config('receipt-snap.ai.provider', 'gemini');
             $provider = Lab::tryFrom($providerName) ?? Lab::Gemini;
-            $model = config('receipt-snap.ai.model') ?: env('RECEIPT_AI_MODEL', 'gemini-3.5-flash-lite');
+            $model = (string) config('receipt-snap.ai.model', 'gemini-3.5-flash-lite');
 
             // Prompt agent via laravel/ai SDK
             $imageAttachment = Image::fromStorage($primaryImage->file_path, disk: $primaryImage->disk ?: 'local');
@@ -208,7 +208,9 @@ final class ProcessReceiptScan implements ShouldBeUnique, ShouldQueue
 
             // Record success and increment quota
             $circuitBreaker->recordSuccess();
-            $aiQuotaService->incrementUsage($expense->organization);
+            if ($expense->organization instanceof \App\Models\Organization) {
+                $aiQuotaService->incrementUsage($expense->organization);
+            }
 
         } catch (\Throwable $e) {
             $circuitBreaker->recordFailure();

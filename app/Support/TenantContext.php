@@ -20,14 +20,22 @@ final class TenantContext
         }
 
         if ($user = auth()->user()) {
-            $orgId = session('current_organization_id')
-                ?? $user->organizations()->wherePivot('is_active', true)->first()?->id
-                ?? $user->organizations()->first()?->id;
-
-            if ($orgId) {
-                self::$organizationId = (int) $orgId;
+            $sessionOrgId = session('current_organization_id');
+            if ($sessionOrgId) {
+                self::$organizationId = (int) $sessionOrgId;
 
                 return self::$organizationId;
+            }
+
+            if ($user instanceof \App\Models\User) {
+                $org = $user->organizations()->wherePivot('is_active', true)->first()
+                    ?? $user->organizations()->first();
+
+                if ($org) {
+                    self::$organizationId = (int) $org->getKey();
+
+                    return self::$organizationId;
+                }
             }
         }
 

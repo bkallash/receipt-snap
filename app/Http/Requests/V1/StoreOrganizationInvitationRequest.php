@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\V1;
 
 use App\Enums\UserRole;
+use App\Models\OrganizationInvitation;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 

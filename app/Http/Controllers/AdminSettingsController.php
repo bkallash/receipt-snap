@@ -36,14 +36,15 @@ final class AdminSettingsController extends Controller
         $settings = array_merge(self::SETTING_DEFAULTS, $org->settings ?? []);
         $isOwner = $request->user()->roleIn($org) === UserRole::Owner;
 
-        $limit = $org->ai_scan_monthly_limit ?? $org->plan_tier?->aiScanLimit();
+        $planTier = $org->plan_tier;
+        $limit = $org->ai_scan_monthly_limit ?? ($planTier instanceof \App\Enums\PlanTier ? $planTier->aiScanLimit() : null);
 
         return Inertia::render('Admin/Settings', [
             'organization' => [
                 'id' => $org->id,
                 'name' => $org->name,
                 'slug' => $org->slug,
-                'plan_tier' => $org->plan_tier?->value,
+                'plan_tier' => $planTier instanceof \App\Enums\PlanTier ? $planTier->value : (string) $planTier,
                 'logo_path' => $org->logo_path,
             ],
             'settings' => [

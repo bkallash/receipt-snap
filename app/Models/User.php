@@ -105,10 +105,12 @@ class User extends Authenticatable implements PasskeyUser
     public function currentOrganization(): ?Organization
     {
         if ($orgId = TenantContext::get()) {
-            return $this->organizations()->where('organizations.id', $orgId)->first();
+            return Organization::where('id', $orgId)
+                ->whereHas('users', fn ($q) => $q->where('users.id', $this->id)->where('organization_user.is_active', true))
+                ->first();
         }
 
-        return $this->organizations()->wherePivot('is_active', true)->first();
+        return Organization::whereHas('users', fn ($q) => $q->where('users.id', $this->id)->where('organization_user.is_active', true))->first();
     }
 
     public function isOwnerOf(Organization $organization): bool

@@ -97,7 +97,7 @@ final class EmployeePortalController extends Controller
         $user = $request->user();
         $expense = $receiptImage->expense;
 
-        if (! $expense) {
+        if (! $expense instanceof Expense) {
             abort(404, 'Expense not found for image.');
         }
 

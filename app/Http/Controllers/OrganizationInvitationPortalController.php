@@ -28,26 +28,33 @@ final class OrganizationInvitationPortalController extends Controller
             ->with(['organization', 'invitedBy', 'department'])
             ->latest()
             ->get()
-            ->map(fn (OrganizationInvitation $invitation) => [
-                'id' => $invitation->id,
-                'token' => $invitation->token,
-                'organization' => [
-                    'id' => $invitation->organization->id,
-                    'name' => $invitation->organization->name,
-                    'slug' => $invitation->organization->slug,
-                ],
-                'invited_by' => $invitation->invitedBy ? [
-                    'name' => $invitation->invitedBy->name,
-                    'email' => $invitation->invitedBy->email,
-                ] : null,
-                'role' => $invitation->role->value,
-                'department' => $invitation->department ? [
-                    'id' => $invitation->department->id,
-                    'name' => $invitation->department->name,
-                ] : null,
-                'created_at' => $invitation->created_at?->diffForHumans(),
-                'expires_at' => $invitation->expires_at?->diffForHumans(),
-            ]);
+            ->map(function ($invitation): array {
+                /** @var OrganizationInvitation $invitation */
+                $org = $invitation->organization;
+                $invitedBy = $invitation->invitedBy;
+                $dept = $invitation->department;
+
+                return [
+                    'id' => $invitation->id,
+                    'token' => $invitation->token,
+                    'organization' => [
+                        'id' => $org instanceof \App\Models\Organization ? $org->id : null,
+                        'name' => $org instanceof \App\Models\Organization ? $org->name : null,
+                        'slug' => $org instanceof \App\Models\Organization ? $org->slug : null,
+                    ],
+                    'invited_by' => $invitedBy instanceof \App\Models\User ? [
+                        'name' => $invitedBy->name,
+                        'email' => $invitedBy->email,
+                    ] : null,
+                    'role' => $invitation->role->value,
+                    'department' => $dept instanceof \App\Models\Department ? [
+                        'id' => $dept->id,
+                        'name' => $dept->name,
+                    ] : null,
+                    'created_at' => $invitation->created_at ? $invitation->created_at->diffForHumans() : null,
+                    'expires_at' => $invitation->expires_at ? $invitation->expires_at->diffForHumans() : null,
+                ];
+            });
 
         $hasOrganization = $user->organizations()->wherePivot('is_active', true)->exists();
 
@@ -71,8 +78,11 @@ final class OrganizationInvitationPortalController extends Controller
         // Set active tenant context to newly joined organization
         TenantContext::set($invitation->organization_id);
 
+        $org = $invitation->organization;
+        $orgName = $org instanceof \App\Models\Organization ? $org->name : 'Organization';
+
         return redirect()->route('portal.expenses')
-            ->with('success', "You have successfully joined {$invitation->organization->name}!");
+            ->with('success', "You have successfully joined {$orgName}!");
     }
 
     public function reject(Request $request, OrganizationInvitation $invitation): RedirectResponse
@@ -82,7 +92,10 @@ final class OrganizationInvitationPortalController extends Controller
         $user = $request->user();
         $this->invitationService->rejectInvitation($invitation, $user);
 
+        $org = $invitation->organization;
+        $orgName = $org instanceof \App\Models\Organization ? $org->name : 'Organization';
+
         return redirect()->route('portal.invitations')
-            ->with('info', "Invitation to {$invitation->organization->name} was declined.");
+            ->with('info', "Invitation to {$orgName} was declined.");
     }
 }

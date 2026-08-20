@@ -10,6 +10,7 @@ use App\Http\Controllers\Concerns\AdministersOrganization;
 use App\Models\Department;
 use App\Models\Organization;
 use App\Models\OrganizationInvitation;
+use App\Models\User;
 use App\Services\OrganizationInvitationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -37,25 +38,35 @@ final class AdminInvitationController extends Controller
         $existingEmails = $org->users()->pluck('email')->map(fn ($e): string => strtolower((string) $e))->all();
 
         $pending = $invitations
-            ->filter(function (OrganizationInvitation $i): bool {
-                return $i->status === InvitationStatus::Pending && $i->expires_at !== null && $i->expires_at->isFuture();
+            ->toBase()
+            ->filter(function ($i): bool {
+                /** @var OrganizationInvitation $i */
+                return $i->status === InvitationStatus::Pending && $i->expires_at && $i->expires_at->isFuture();
             })
-            ->map(fn (OrganizationInvitation $i): array => $this->present($i))
+            ->map(function ($i): array {
+                /** @var OrganizationInvitation $i */
+                return $this->present($i);
+            })
             ->values()
             ->all();
 
         $history = $invitations
-            ->filter(function (OrganizationInvitation $i): bool {
-                return $i->status !== InvitationStatus::Pending || ($i->expires_at !== null && $i->expires_at->isPast());
+            ->toBase()
+            ->filter(function ($i): bool {
+                /** @var OrganizationInvitation $i */
+                return $i->status !== InvitationStatus::Pending || ($i->expires_at && $i->expires_at->isPast());
             })
-            ->map(fn (OrganizationInvitation $i): array => $this->present($i))
+            ->map(function ($i): array {
+                /** @var OrganizationInvitation $i */
+                return $this->present($i);
+            })
             ->values()
             ->all();
 
         return Inertia::render('Admin/Invitations', [
             'pending' => $pending,
             'history' => $history,
-            'departments' => $org->departments()->orderBy('name')->get(['id', 'name'])
+            'departments' => Department::where('organization_id', $org->id)->orderBy('name')->get(['id', 'name'])
                 ->map(fn (Department $d): array => ['id' => $d->id, 'name' => $d->name])->all(),
             'roles' => $this->invitableRoles(),
             'memberEmails' => $existingEmails,
@@ -97,7 +108,7 @@ final class AdminInvitationController extends Controller
             ]);
         }
 
-        $alreadyMembers = $org->users()->pluck('email')->map(fn ($e): string => strtolower((string) $e));
+        $alreadyMembers = $org->users()->pluck('email')->map(fn ($e): string => strtolower((string) $e))->all();
         $skipped = $emails->intersect($alreadyMembers);
         $toInvite = $emails->diff($alreadyMembers);
 
@@ -181,18 +192,21 @@ final class AdminInvitationController extends Controller
     private function present(OrganizationInvitation $invitation): array
     {
         $expiresAt = $invitation->expires_at;
-        $isExpired = $invitation->status === InvitationStatus::Pending && $expiresAt !== null && $expiresAt->isPast();
+        $isExpired = $invitation->status === InvitationStatus::Pending && $expiresAt && $expiresAt->isPast();
+
+        $dept = $invitation->department;
+        $inviter = $invitation->invitedBy;
 
         return [
             'id' => $invitation->id,
             'email' => $invitation->email,
             'role' => $invitation->role->value,
             'status' => $isExpired ? 'expired' : $invitation->status->value,
-            'department_name' => $invitation->department?->name,
-            'invited_by' => $invitation->invitedBy?->name,
-            'created_at' => $invitation->created_at?->toIso8601String(),
-            'expires_at' => $expiresAt?->toIso8601String(),
-            'days_until_expiry' => $expiresAt !== null && $expiresAt->isFuture()
+            'department_name' => $dept instanceof Department ? $dept->name : null,
+            'invited_by' => $inviter instanceof User ? $inviter->name : null,
+            'created_at' => $invitation->created_at ? $invitation->created_at->toIso8601String() : null,
+            'expires_at' => $expiresAt ? $expiresAt->toIso8601String() : null,
+            'days_until_expiry' => $expiresAt && $expiresAt->isFuture()
                 ? (int) Carbon::now()->diffInDays($expiresAt, false)
                 : null,
         ];

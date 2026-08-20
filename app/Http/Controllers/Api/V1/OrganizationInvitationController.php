@@ -26,7 +26,7 @@ final class OrganizationInvitationController extends Controller
     {
         $this->authorize('viewAny', [OrganizationInvitation::class, $organization]);
 
-        $invitations = $organization->invitations()
+        $invitations = OrganizationInvitation::where('organization_id', $organization->id)
             ->pending()
             ->with(['invitedBy', 'department'])
             ->get();

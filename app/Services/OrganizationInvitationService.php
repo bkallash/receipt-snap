@@ -50,14 +50,17 @@ final class OrganizationInvitationService
             throw new \RuntimeException('Logged in user email does not match invitation recipient.');
         }
 
-        $invitation->organization->users()->syncWithoutDetaching([
-            $user->id => [
-                'role' => $invitation->role->value,
-                'department_id' => $invitation->department_id,
-                'is_active' => true,
-                'joined_at' => now(),
-            ],
-        ]);
+        $org = $invitation->organization;
+        if ($org instanceof \App\Models\Organization) {
+            $org->users()->syncWithoutDetaching([
+                $user->id => [
+                    'role' => $invitation->role->value,
+                    'department_id' => $invitation->department_id,
+                    'is_active' => true,
+                    'joined_at' => now(),
+                ],
+            ]);
+        }
 
         $invitation->update([
             'status' => InvitationStatus::Accepted,

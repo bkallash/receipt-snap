@@ -8,6 +8,9 @@ use App\Support\TenantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin \App\Models\User
+ */
 final class UserResource extends JsonResource
 {
     /**
@@ -16,10 +19,25 @@ final class UserResource extends JsonResource
     public function toArray(Request $request): array
     {
         $orgId = TenantContext::get();
-        $pivot = null;
+        $user = $this->resource;
 
-        if ($orgId && $this->relationLoaded('organizations')) {
-            $pivot = $this->organizations->firstWhere('id', $orgId)?->pivot;
+        if ($user instanceof \App\Models\User && $orgId) {
+            $pivotRow = \Illuminate\Support\Facades\DB::table('organization_user')
+                ->where('organization_id', $orgId)
+                ->where('user_id', $user->id)
+                ->first();
+
+            if ($pivotRow) {
+                return [
+                    'id' => $this->id,
+                    'name' => $this->name,
+                    'email' => $this->email,
+                    'initials' => $this->initials(),
+                    'role' => $pivotRow->role,
+                    'is_active' => (bool) $pivotRow->is_active,
+                    'joined_at' => $pivotRow->joined_at,
+                ];
+            }
         }
 
         return [
@@ -27,9 +45,9 @@ final class UserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'initials' => $this->initials(),
-            'role' => $pivot?->role ?? $this->whenPivotLoaded('organization_user', fn () => $this->pivot->role),
-            'is_active' => $pivot?->is_active ?? $this->whenPivotLoaded('organization_user', fn () => (bool) $this->pivot->is_active, true),
-            'joined_at' => $pivot?->joined_at ?? $this->whenPivotLoaded('organization_user', fn () => $this->pivot->joined_at),
+            'role' => null,
+            'is_active' => true,
+            'joined_at' => null,
         ];
     }
 }

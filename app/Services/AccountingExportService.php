@@ -17,6 +17,7 @@ final class AccountingExportService
     public function generateBankFile(ReimbursementBatch $batch, ExportFormat $format): string
     {
         $batch->load(['expenses.user', 'expenses.category']);
+        /** @var \Illuminate\Database\Eloquent\Collection<int, Expense> $expenses */
         $expenses = $batch->expenses;
 
         return match ($format) {
@@ -41,15 +42,18 @@ final class AccountingExportService
         $output[] = ['Transaction Date', 'Ref No', 'Payee', 'Account', 'Amount', 'Tax Amount', 'Memo', 'GL Code'];
 
         foreach ($expenses as $expense) {
+            $user = $expense->user;
+            $cat = $expense->category;
+
             $output[] = [
-                $expense->expense_date->format('m/d/Y'),
+                $expense->expense_date ? $expense->expense_date->format('m/d/Y') : '',
                 $expense->uuid,
-                $expense->user?->name ?? 'Employee',
-                $expense->category?->name ?? 'Uncategorized',
+                $user instanceof \App\Models\User ? $user->name : 'Employee',
+                $cat instanceof \App\Models\ExpenseCategory ? $cat->name : 'Uncategorized',
                 number_format((float) $expense->amount, 2, '.', ''),
                 number_format((float) ($expense->tax_amount ?? 0), 2, '.', ''),
                 $expense->merchant_name ?? $expense->description ?? 'Expense Claim',
-                $expense->category?->gl_code ?? 'GL-6000',
+                $cat instanceof \App\Models\ExpenseCategory && $cat->gl_code ? $cat->gl_code : 'GL-6000',
             ];
         }
 
@@ -67,17 +71,20 @@ final class AccountingExportService
         $output[] = ['ContactName', 'EmailAddress', 'InvoiceNumber', 'InvoiceDate', 'DueDate', 'Total', 'InventoryItemCode', 'Description', 'AccountCode', 'TaxType', 'TaxAmount'];
 
         foreach ($expenses as $expense) {
+            $user = $expense->user;
+            $cat = $expense->category;
+
             $output[] = [
-                $expense->user?->name ?? 'Employee Reimbursement',
-                $expense->user?->email ?? '',
+                $user instanceof \App\Models\User ? $user->name : 'Employee Reimbursement',
+                $user instanceof \App\Models\User ? $user->email : '',
                 'EXP-'.$expense->id,
-                $expense->expense_date->format('Y-m-d'),
+                $expense->expense_date ? $expense->expense_date->format('Y-m-d') : '',
                 now()->addDays(7)->format('Y-m-d'),
                 number_format((float) $expense->amount, 2, '.', ''),
                 '',
                 $expense->merchant_name ?? $expense->description ?? 'Expense',
-                $expense->category?->gl_code ?? '600',
-                $expense->tax_amount > 0 ? 'OUTPUT' : 'EXEMPT',
+                $cat instanceof \App\Models\ExpenseCategory && $cat->gl_code ? $cat->gl_code : '600',
+                ($expense->tax_amount ?? 0) > 0 ? 'OUTPUT' : 'EXEMPT',
                 number_format((float) ($expense->tax_amount ?? 0), 2, '.', ''),
             ];
         }
@@ -96,16 +103,19 @@ final class AccountingExportService
         $output[] = ['External ID', 'Date', 'Entity Name', 'Account GL Code', 'Debit Amount', 'Credit Amount', 'Tax Code', 'Memo', 'Department'];
 
         foreach ($expenses as $expense) {
+            $user = $expense->user;
+            $cat = $expense->category;
+
             $output[] = [
                 $expense->uuid,
-                $expense->expense_date->format('Y-m-d'),
-                $expense->user?->name ?? 'Employee',
-                $expense->category?->gl_code ?? 'GL-6000',
+                $expense->expense_date ? $expense->expense_date->format('Y-m-d') : '',
+                $user instanceof \App\Models\User ? $user->name : 'Employee',
+                $cat instanceof \App\Models\ExpenseCategory && $cat->gl_code ? $cat->gl_code : 'GL-6000',
                 number_format((float) $expense->amount, 2, '.', ''),
                 '0.00',
-                $expense->tax_amount > 0 ? 'VAT_20' : 'TAX_FREE',
+                ($expense->tax_amount ?? 0) > 0 ? 'VAT_20' : 'TAX_FREE',
                 $expense->merchant_name ?? 'Expense',
-                $expense->user?->departments?->first()?->name ?? 'General',
+                'General',
             ];
         }
 
@@ -123,17 +133,20 @@ final class AccountingExportService
         $output[] = ['Expense UUID', 'Date', 'Employee', 'Merchant', 'Merchant Tax/VAT ID', 'Subtotal', 'Tax/VAT Amount', 'Total Amount', 'GL Code', 'Tax Verified'];
 
         foreach ($expenses as $expense) {
+            $user = $expense->user;
+            $cat = $expense->category;
             $subtotal = (float) $expense->amount - (float) ($expense->tax_amount ?? 0);
+
             $output[] = [
                 $expense->uuid,
-                $expense->expense_date->format('Y-m-d'),
-                $expense->user?->name ?? 'N/A',
+                $expense->expense_date ? $expense->expense_date->format('Y-m-d') : '',
+                $user instanceof \App\Models\User ? $user->name : 'N/A',
                 $expense->merchant_name ?? 'N/A',
                 $expense->merchant_vat_id ?? 'N/A',
                 number_format($subtotal, 2, '.', ''),
                 number_format((float) ($expense->tax_amount ?? 0), 2, '.', ''),
                 number_format((float) $expense->amount, 2, '.', ''),
-                $expense->category?->gl_code ?? 'UNMAPPED',
+                $cat instanceof \App\Models\ExpenseCategory && $cat->gl_code ? $cat->gl_code : 'UNMAPPED',
                 $expense->tax_verified ? 'YES' : 'NO',
             ];
         }
@@ -152,15 +165,18 @@ final class AccountingExportService
         $output[] = ['Claim ID', 'Approval Date', 'Employee Name', 'Employee Email', 'Amount', 'Currency', 'Category', 'GL Code', 'Payment Reference'];
 
         foreach ($expenses as $expense) {
+            $user = $expense->user;
+            $cat = $expense->category;
+
             $output[] = [
                 $expense->uuid,
                 $expense->approved_at ? $expense->approved_at->format('Y-m-d') : $expense->updated_at->format('Y-m-d'),
-                $expense->user?->name ?? 'Employee',
-                $expense->user?->email ?? '',
+                $user instanceof \App\Models\User ? $user->name : 'Employee',
+                $user instanceof \App\Models\User ? $user->email : '',
                 number_format((float) $expense->amount, 2, '.', ''),
                 $expense->currency_code,
-                $expense->category?->name ?? 'General',
-                $expense->category?->gl_code ?? 'GL-6000',
+                $cat instanceof \App\Models\ExpenseCategory ? $cat->name : 'General',
+                $cat instanceof \App\Models\ExpenseCategory && $cat->gl_code ? $cat->gl_code : 'GL-6000',
                 $expense->payment_reference ?? 'UNPAID',
             ];
         }
@@ -179,7 +195,8 @@ final class AccountingExportService
         foreach ($expenses as $idx => $expense) {
             $seq = str_pad((string) ($idx + 1), 7, '0', STR_PAD_LEFT);
             $amountCents = str_pad((string) (int) ($expense->amount * 100), 10, '0', STR_PAD_LEFT);
-            $name = str_pad(substr($expense->user?->name ?? 'Employee', 0, 22), 22, ' ');
+            $userName = $expense->user instanceof \App\Models\User ? $expense->user->name : 'Employee';
+            $name = str_pad(substr($userName, 0, 22), 22, ' ');
             $lines[] = "622123456780123456789{$amountCents}EMP-{$expense->user_id}         {$name}S 001100001{$seq}";
         }
 
@@ -216,7 +233,8 @@ final class AccountingExportService
             $instdAmt->addAttribute('Ccy', $expense->currency_code);
 
             $cdtr = $cdtTrfTxInf->addChild('Cdtr');
-            $cdtr->addChild('Nm', htmlspecialchars($expense->user?->name ?? 'Employee'));
+            $userName = $expense->user instanceof \App\Models\User ? $expense->user->name : 'Employee';
+            $cdtr->addChild('Nm', htmlspecialchars($userName));
         }
 
         return $xml->asXML() ?: '';

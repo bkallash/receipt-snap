@@ -284,10 +284,8 @@ final class AdminPortalController extends Controller
             'organization_id' => ['required', 'integer'],
         ]);
 
-        $target = $request->user()
-            ->organizations()
-            ->wherePivot('is_active', true)
-            ->where('organizations.id', $validated['organization_id'])
+        $target = Organization::where('id', (int) $validated['organization_id'])
+            ->whereHas('users', fn ($q) => $q->where('users.id', $request->user()->id)->where('organization_user.is_active', true))
             ->first();
 
         if (! $target || ! in_array($request->user()->roleIn($target), self::ADMIN_ROLES, true)) {

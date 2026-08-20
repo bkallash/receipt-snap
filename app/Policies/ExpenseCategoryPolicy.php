@@ -18,7 +18,9 @@ final class ExpenseCategoryPolicy
 
     public function view(User $user, ExpenseCategory $category): bool
     {
-        return $user->roleIn($category->organization) !== null;
+        $org = $category->organization;
+
+        return $org instanceof Organization && $user->roleIn($org) !== null;
     }
 
     public function create(User $user, Organization $organization): bool
@@ -30,14 +32,22 @@ final class ExpenseCategoryPolicy
 
     public function update(User $user, ExpenseCategory $category): bool
     {
-        $role = $user->roleIn($category->organization);
+        $org = $category->organization;
+        if (! $org instanceof Organization) {
+            return false;
+        }
+        $role = $user->roleIn($org);
 
         return $role === UserRole::Owner || $role === UserRole::Admin;
     }
 
     public function delete(User $user, ExpenseCategory $category): bool
     {
-        $role = $user->roleIn($category->organization);
+        $org = $category->organization;
+        if (! $org instanceof Organization) {
+            return false;
+        }
+        $role = $user->roleIn($org);
 
         if (! in_array($role, [UserRole::Owner, UserRole::Admin], true)) {
             return false;

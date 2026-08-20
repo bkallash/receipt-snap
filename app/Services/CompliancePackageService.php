@@ -41,7 +41,7 @@ final class CompliancePackageService
                     $log->id,
                     $log->created_at?->toIso8601String(),
                     $log->user_id ?? 'SYSTEM',
-                    $log->user?->name ?? 'System',
+                    $log->user instanceof \App\Models\User ? $log->user->name : 'System',
                     is_object($log->action) ? $log->action->value : $log->action,
                     $log->auditable_type,
                     $log->auditable_id,

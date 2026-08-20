@@ -39,9 +39,14 @@ final class SetOrganizationContext
 
         // 3. Fallback to session / default org for web or token without explicit ability
         if (! $organizationId) {
-            $organizationId = session('current_organization_id')
-                ?? $user->organizations()->wherePivot('is_active', true)->first()?->id
-                ?? $user->organizations()->first()?->id;
+            $sessionOrgId = session('current_organization_id');
+            if ($sessionOrgId) {
+                $organizationId = (int) $sessionOrgId;
+            } else {
+                $firstOrg = $user->organizations()->wherePivot('is_active', true)->first()
+                    ?? $user->organizations()->first();
+                $organizationId = $firstOrg ? (int) $firstOrg->getKey() : null;
+            }
         }
 
         if (! $organizationId) {

@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\BudgetPeriod;
 use App\Http\Controllers\Concerns\AdministersOrganization;
 use App\Models\Department;
+use App\Models\Organization;
 use App\Services\BudgetService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -38,7 +39,8 @@ final class AdminDepartmentController extends Controller
             ->groupBy('department_id')
             ->pluck('aggregate', 'department_id');
 
-        $enriched = $departments->map(function (Department $dept) use ($memberCounts): array {
+        $enriched = $departments->toBase()->map(function ($dept) use ($memberCounts): array {
+            /** @var Department $dept */
             $budget = $this->budgetService->calculateDepartmentBudgetStatus($dept);
 
             return [
@@ -159,7 +161,7 @@ final class AdminDepartmentController extends Controller
         ];
     }
 
-    private function assertDepartmentBelongsToOrg($org, Department $department): void
+    private function assertDepartmentBelongsToOrg(Organization $org, Department $department): void
     {
         abort_unless(
             $department->organization_id === $org->id,

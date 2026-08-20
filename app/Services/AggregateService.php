@@ -246,8 +246,8 @@ final class AggregateService
             $avgSpend = (float) ($stats->avg_spend ?? 0.0);
 
             return [
-                'id' => $dept->id,
-                'name' => $dept->name,
+                'id' => (int) $dept->id,
+                'name' => (string) $dept->name,
                 'total_spend' => round($totalSpend, 2),
                 'expense_count' => $claimCount,
                 'average_claim' => round($avgSpend, 2),

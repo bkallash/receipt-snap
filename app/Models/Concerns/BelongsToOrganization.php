@@ -22,14 +22,14 @@ trait BelongsToOrganization
         });
 
         static::creating(function (Model $model): void {
-            if (! $model->organization_id) {
+            if (! $model->getAttribute('organization_id')) {
                 $orgId = TenantContext::get();
 
                 if (! $orgId) {
                     throw new TenantContextMissingException(static::class);
                 }
 
-                $model->organization_id = $orgId;
+                $model->setAttribute('organization_id', $orgId);
             }
         });
     }

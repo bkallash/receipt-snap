@@ -18,7 +18,9 @@ final class DepartmentPolicy
 
     public function view(User $user, Department $department): bool
     {
-        return $user->roleIn($department->organization) !== null;
+        $org = $department->organization;
+
+        return $org instanceof Organization && $user->roleIn($org) !== null;
     }
 
     public function create(User $user, Organization $organization): bool
@@ -30,14 +32,22 @@ final class DepartmentPolicy
 
     public function update(User $user, Department $department): bool
     {
-        $role = $user->roleIn($department->organization);
+        $org = $department->organization;
+        if (! $org instanceof Organization) {
+            return false;
+        }
+        $role = $user->roleIn($org);
 
         return $role === UserRole::Owner || $role === UserRole::Admin;
     }
 
     public function delete(User $user, Department $department): bool
     {
-        $role = $user->roleIn($department->organization);
+        $org = $department->organization;
+        if (! $org instanceof Organization) {
+            return false;
+        }
+        $role = $user->roleIn($org);
 
         return $role === UserRole::Owner || $role === UserRole::Admin;
     }

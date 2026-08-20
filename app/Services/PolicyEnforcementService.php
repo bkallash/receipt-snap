@@ -35,15 +35,17 @@ final class PolicyEnforcementService
         }
 
         // Rule 2: Category Overrun (Single-item limit & Period budget limit)
-        if ($expense->category) {
-            $catFlags = $this->budgetService->checkCategoryOverrun($expense->category, (float) $expense->amount, $expense->expense_date);
+        $cat = $expense->category;
+        if ($cat instanceof \App\Models\ExpenseCategory) {
+            $catFlags = $this->budgetService->checkCategoryOverrun($cat, (float) $expense->amount, $expense->expense_date);
             foreach ($catFlags as $catFlag) {
                 $flags[] = $catFlag;
             }
         }
 
         // Rule 3: Missing Receipt Check
-        $orgSettings = $expense->organization?->settings ?? [];
+        $org = $expense->organization;
+        $orgSettings = $org instanceof \App\Models\Organization && is_array($org->settings) ? $org->settings : [];
         $threshold = isset($orgSettings['require_receipt_threshold'])
             ? (float) $orgSettings['require_receipt_threshold']
             : (float) config('receipt-snap.policies.require_receipt_threshold_amount', 25.00);
@@ -82,15 +84,16 @@ final class PolicyEnforcementService
 
         // Rule 5: Duplicate Submission Check
         foreach ($expense->receiptImages as $image) {
-            if ($image->perceptual_hash) {
+            if ($image instanceof \App\Models\ReceiptImage && $image->perceptual_hash) {
                 $dupImage = $this->duplicateDetectionService->checkImageDuplicate($image->perceptual_hash);
                 if ($dupImage && $dupImage->expense_id !== $expense->id) {
+                    $dupExp = $dupImage->expense;
                     $flags[] = [
                         'code' => 'DUPLICATE_RECEIPT_IMAGE',
                         'severity' => 'critical',
                         'message' => sprintf(
                             'Attached receipt image matches an existing receipt (Expense UUID: %s).',
-                            $dupImage->expense?->uuid ?? 'unknown'
+                            $dupExp instanceof \App\Models\Expense ? $dupExp->uuid : 'unknown'
                         ),
                     ];
 

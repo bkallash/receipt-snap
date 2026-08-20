@@ -10,6 +10,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 
+/**
+ * @property-read string $url
+ * @property-read string|null $thumbnail_url
+ * @property-read string|null $preview_url
+ */
 final class ReceiptImage extends Model
 {
     use HasFactory;

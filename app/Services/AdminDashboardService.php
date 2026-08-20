@@ -351,17 +351,22 @@ final class AdminDashboardService
             ->latest('id')
             ->take(5)
             ->get()
-            ->map(fn (OrganizationInvitation $invitation): array => [
-                'id' => $invitation->id,
-                'email' => $invitation->email,
-                'role' => $invitation->role?->value,
-                'department_name' => $invitation->department?->name,
-                'invited_by' => $invitation->invitedBy?->name,
-                'expires_at' => $invitation->expires_at?->toIso8601String(),
-                'days_until_expiry' => $invitation->expires_at
-                    ? max(0, (int) CarbonImmutable::now()->diffInDays($invitation->expires_at, false))
-                    : null,
-            ])
+            ->map(function (OrganizationInvitation $invitation): array {
+                $dept = $invitation->department;
+                $invBy = $invitation->invitedBy;
+
+                return [
+                    'id' => $invitation->id,
+                    'email' => $invitation->email,
+                    'role' => $invitation->role?->value,
+                    'department_name' => $dept instanceof \App\Models\Department ? $dept->name : null,
+                    'invited_by' => $invBy instanceof \App\Models\User ? $invBy->name : null,
+                    'expires_at' => $invitation->expires_at?->toIso8601String(),
+                    'days_until_expiry' => $invitation->expires_at
+                        ? max(0, (int) CarbonImmutable::now()->diffInDays($invitation->expires_at, false))
+                        : null,
+                ];
+            })
             ->all();
 
         return [
@@ -407,14 +412,18 @@ final class AdminDashboardService
             ->latest('id')
             ->take(8)
             ->get()
-            ->map(fn (AuditLog $log): array => [
-                'uuid' => $log->uuid,
-                'action' => $log->action?->value,
-                'actor_name' => $log->actor?->name ?? 'System',
-                'auditable_type' => $log->auditable_type ? class_basename((string) $log->auditable_type) : null,
-                'auditable_id' => $log->auditable_id,
-                'created_at' => $log->created_at?->toIso8601String(),
-            ])
+            ->map(function (AuditLog $log): array {
+                $actor = $log->actor;
+
+                return [
+                    'uuid' => $log->uuid,
+                    'action' => $log->action?->value,
+                    'actor_name' => $actor instanceof \App\Models\User ? $actor->name : 'System',
+                    'auditable_type' => $log->auditable_type ? class_basename((string) $log->auditable_type) : null,
+                    'auditable_id' => $log->auditable_id,
+                    'created_at' => $log->created_at?->toIso8601String(),
+                ];
+            })
             ->all();
     }
 
@@ -428,17 +437,21 @@ final class AdminDashboardService
             ->latest('id')
             ->take(5)
             ->get()
-            ->map(fn (ReimbursementBatch $batch): array => [
-                'id' => $batch->id,
-                'batch_number' => $batch->batch_number,
-                'status' => $batch->status?->value,
-                'claim_count' => (int) $batch->claim_count,
-                'total_amount' => (float) $batch->total_amount,
-                'currency_code' => $batch->currency_code,
-                'created_by' => $batch->createdByUser?->name,
-                'processed_at' => $batch->processed_at?->toIso8601String(),
-                'created_at' => $batch->created_at?->toIso8601String(),
-            ])
+            ->map(function (ReimbursementBatch $batch): array {
+                $creator = $batch->createdByUser;
+
+                return [
+                    'id' => $batch->id,
+                    'batch_number' => $batch->batch_number,
+                    'status' => $batch->status?->value,
+                    'claim_count' => (int) $batch->claim_count,
+                    'total_amount' => (float) $batch->total_amount,
+                    'currency_code' => $batch->currency_code,
+                    'created_by' => $creator instanceof \App\Models\User ? $creator->name : null,
+                    'processed_at' => $batch->processed_at?->toIso8601String(),
+                    'created_at' => $batch->created_at?->toIso8601String(),
+                ];
+            })
             ->all();
     }
 

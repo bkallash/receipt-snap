@@ -29,7 +29,7 @@ class ReceiptParserAgent implements Agent, HasStructuredOutput
 
     public function model(): ?string
     {
-        return config('receipt-snap.ai.model') ?: env('RECEIPT_AI_MODEL', 'gemini-3.5-flash-lite');
+        return (string) config('receipt-snap.ai.model', 'gemini-3.5-flash-lite');
     }
 
     public function instructions(): string

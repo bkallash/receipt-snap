@@ -78,7 +78,7 @@ final class AdminMemberController extends Controller
                     'reimbursed_amount' => 0.0,
                 ],
             ])->all(),
-            'departments' => $org->departments()->orderBy('name')->get(['id', 'name'])
+            'departments' => Department::where('organization_id', $org->id)->orderBy('name')->get(['id', 'name'])
                 ->map(fn (Department $d): array => ['id' => $d->id, 'name' => $d->name])->all(),
             'roles' => $this->assignableRoles($request, $org),
             'roleDescriptions' => $this->roleDescriptions(),
@@ -172,9 +172,11 @@ final class AdminMemberController extends Controller
             return [];
         }
 
-        $rows = Expense::where('organization_id', $org->id)
+        $rows = DB::table('expenses')
+            ->where('organization_id', $org->id)
+            ->whereNull('deleted_at')
             ->whereIn('user_id', $memberIds)
-            ->where('status', '!=', ExpenseStatus::Draft)
+            ->where('status', '!=', ExpenseStatus::Draft->value)
             ->selectRaw('user_id, status, COUNT(*) as claim_count, COALESCE(SUM(amount), 0) as total_amount')
             ->groupBy('user_id', 'status')
             ->get();
@@ -192,7 +194,7 @@ final class AdminMemberController extends Controller
 
             $count = (int) $row->claim_count;
             $amount = (float) $row->total_amount;
-            $status = $row->status instanceof ExpenseStatus ? $row->status : ExpenseStatus::tryFrom((string) $row->status);
+            $status = ExpenseStatus::tryFrom((string) $row->status);
 
             $stats[$uid]['total_count'] += $count;
             $stats[$uid]['total_amount'] += $amount;

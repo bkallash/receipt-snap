@@ -7,6 +7,9 @@ namespace App\Http\Resources\V1;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin \App\Models\ApprovalStep
+ */
 final class ApprovalStepResource extends JsonResource
 {
     /**

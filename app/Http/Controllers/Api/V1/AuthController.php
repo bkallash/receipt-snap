@@ -84,7 +84,7 @@ final class AuthController extends Controller
             if (! $organization) {
                 return response()->json(['message' => 'User belongs to no active organization.'], Response::HTTP_FORBIDDEN);
             }
-            $organizationId = $organization->id;
+            $organizationId = (int) $organization->getKey();
         }
 
         $token = $user->createToken('api', ["org:{$organizationId}"])->plainTextToken;
@@ -122,7 +122,13 @@ final class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()?->delete();
+        $user = $request->user();
+        if ($user) {
+            $token = $user->currentAccessToken();
+            if ($token instanceof \Laravel\Sanctum\PersonalAccessToken) {
+                $token->delete();
+            }
+        }
         TenantContext::clear();
 
         return response()->json(['message' => 'Logged out successfully.']);

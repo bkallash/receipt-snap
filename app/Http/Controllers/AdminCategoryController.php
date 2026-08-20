@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Enums\BudgetPeriod;
 use App\Http\Controllers\Concerns\AdministersOrganization;
 use App\Models\ExpenseCategory;
+use App\Models\Organization;
 use App\Services\BudgetService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -30,7 +31,8 @@ final class AdminCategoryController extends Controller
             ->orderBy('name')
             ->get();
 
-        $enriched = $categories->map(function (ExpenseCategory $cat): array {
+        $enriched = $categories->toBase()->map(function ($cat): array {
+            /** @var ExpenseCategory $cat */
             $budget = $this->budgetService->calculateCategoryBudgetStatus($cat);
 
             return [
@@ -167,7 +169,7 @@ final class AdminCategoryController extends Controller
         ];
     }
 
-    private function assertCategoryBelongsToOrg($org, ExpenseCategory $category): void
+    private function assertCategoryBelongsToOrg(Organization $org, ExpenseCategory $category): void
     {
         abort_unless(
             $category->organization_id === $org->id,
